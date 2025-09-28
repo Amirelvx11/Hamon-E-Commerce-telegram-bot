@@ -1,0 +1,17 @@
+# Operating system files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Versioned artifacts
+env/
+venv/
+.vscode/
+.idea/
