@@ -1,29 +1,55 @@
+import os
+import requests, time, logging
 from fastapi import FastAPI, Request
-import requests,time
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-app = FastAPI()
+# =====================================================
+# FastAPI + Scheduler setup
+# =====================================================
+app = FastAPI(title="HamoonPay Telegram Bot API")
 
-# --- Config ---
-TOKEN = "8273691312:AAGY4a8YidXubM5C1s2Q6PuZdGsUk4iYmvM"
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
+scheduler = AsyncIOScheduler()
+scheduler.configure(job_defaults={"coalesce": False, "max_instances": 5})
+
+# =====================================================
+# Telegram + Backend API Configuration
+# =====================================================
+load_dotenv()
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+AUTH_TOKEN = os.getenv("AUTH_TOKEN")
+
 SERVER_URLS = {
-    "number": "http://192.168.41.41:8010/api/v1/ass-process/GetByNumber",
-    "serial": "http://192.168.41.41:8010/api/v1/ass-process/GetBySerial",
+    "number": os.getenv("SERVER_URL_NUMBER"),
+    "serial": os.getenv("SERVER_URL_SERIAL"),
 }
-AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6ImEuamFtc2hpZGkiLCJpZCI6Ijc5ZDc3NTllLTkxOGItNGIzZS05MmI2LTlkMzIxNjFiYzIzMiIsIm5hbWUiOiLYp9mF24zYsSDYrNmF2LTbjNiv24wiLCJuYmYiOjE3NTkwNjAxMjYsImV4cCI6MTc2NzcwMDEyNiwiaWF0IjoxNzU5MDYwMTI2LCJpc3MiOiJodHRwOi8vd3d3LlZpZGEubmV0In0.pCRTWccku_NIWKtYeTjHBYOL4DhHuYTnDlUBRw86-wM"
 
-# Track user states: chat_id -> state
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
+
+
+
+# Track user conversation states → { chat_id: {"state": ..., "expires": ...} }
 user_states = {}
 
-
+# =====================================================
+# FastAPI Endpoints
+# =====================================================
 @app.get("/")
 def root():
-    return {"message": "Hamon Electronic Commerce, to contact us please visit our website https://hamoonpay.com/"}
+    """Root endpoint for server check."""
+    return {
+        "message": "Hamoon Electronic Commerce - visit us at https://hamoonpay.com/"
+    }
 
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
-    """Handle incoming Telegram updates"""
+    """
+    Handle incoming updates from Telegram Webhook.
+    Routes requests to message handler or callback handler.
+    """
     try:
         update = await request.json()
     except Exception:
@@ -37,10 +63,14 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 
-# --- Telegram Handlers ---
+# =====================================================
+# Telegram Message Handlers
+# =====================================================
 async def handle_message(message: dict):
+    """Main message handler for incoming text messages."""
     chat_id = message["chat"]["id"]
     text = message.get("text", "").strip()
+
     state_data = user_states.get(chat_id, {})
     state = state_data.get("state")
 
@@ -51,13 +81,12 @@ async def handle_message(message: dict):
         send_support_info(chat_id)
 
     elif state == "waiting_for_subject":
-        # check expiration
+        # If expired → reset state
         if time.time() > state_data.get("expires", 0):
             user_states.pop(chat_id, None)
-            send_message(chat_id, "⏰ زمان ارسال تمام شد !!")
             show_main_menu(chat_id)
         else:
-            # save message (for now just log)
+            # Save message (currently only logs)
             save_subject(chat_id, text)
             send_message(chat_id, "✅ موضوع شما با موفقیت ثبت شد.")
             user_states.pop(chat_id, None)
@@ -74,26 +103,28 @@ async def handle_message(message: dict):
         show_main_menu(chat_id, error=True)
 
 
-
 async def handle_callback(query: dict):
+    """Handle inline keyboard button callbacks."""
     chat_id = query["message"]["chat"]["id"]
     message_id = query["message"]["message_id"]
     choice = query["data"]
 
     if choice == "order_number":
         user_states[chat_id] = {"state": "waiting_for_number", "expires": time.time() + 300}
-        edit_message(chat_id, message_id, "لطفا شماره پذیرش  خود را وارد کنید.(فقط عدد)")
+        schedule_timeout(chat_id, 300)
+        edit_message(chat_id, message_id, "لطفا شماره پذیرش خود را وارد کنید (فقط عدد)")
 
     elif choice == "order_serial":
         user_states[chat_id] = {"state": "waiting_for_serial", "expires": time.time() + 300}
+        schedule_timeout(chat_id, 300)
         edit_message(chat_id, message_id, "لطفا شماره سریال دستگاه خود را وارد کنید (کامل یا ۶ رقم آخر):\nمثال: 12HEC345678")
-
 
     elif choice == "support":
         send_support_info(chat_id, message_id=message_id)
 
     elif choice == "send_subject":
         user_states[chat_id] = {"state": "waiting_for_subject", "expires": time.time() + 300}
+        schedule_timeout(chat_id, 300)
         edit_message(chat_id, message_id, "❔ لطفا متن خود را با رعایت نکات اخلاقی بنویسید:")
 
     elif choice == "main_menu":
@@ -101,32 +132,36 @@ async def handle_callback(query: dict):
         show_main_menu(chat_id, message_id=message_id)
 
 
-# --- Order Handlers ---
+# =====================================================
+# Order Handlers
+# =====================================================
 def handle_order_number(chat_id: int, text: str):
+    """Process order lookup by number."""
     if text.isdigit() and len(text) < 10:
         result = request_server("number", {"number": text})
         send_result(chat_id, result, "سفارش")
         user_states.pop(chat_id, None)
     else:
-        # invalid input → reset state
         user_states.pop(chat_id, None)
         edit_message(chat_id, None, "❌ شماره پذیرش نامعتبر", reply_markup=get_back_keyboard())
 
 
 def handle_serial(chat_id: int, text: str):
+    """Process order lookup by serial number."""
     if len(text) >= 6:
         result = request_server("serial", {"serial": text})
         send_result(chat_id, result, "دستگاه")
         user_states.pop(chat_id, None)
     else:
-        # invalid input → reset state
         user_states.pop(chat_id, None)
         edit_message(chat_id, None, "❌ شماره سریال معتبر نیست. حداقل ۶ کاراکتر وارد کنید.", reply_markup=get_back_keyboard())
 
 
-# --- API & Data Processing ---
+# =====================================================
+# External API Requests
+# =====================================================
 def request_server(mode: str, payload: dict):
-    """Send request to backend server"""
+    """Send request to backend server and return JSON response."""
     url = SERVER_URLS[mode]
     headers = {"auth-token": AUTH_TOKEN, "Content-Type": "application/json"}
 
@@ -134,12 +169,15 @@ def request_server(mode: str, payload: dict):
         response = requests.post(url, json=payload, headers=headers, timeout=10)
         return response.json() if response.status_code == 200 else None
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Request failed: {e}")
+        logging.error(f"[ERROR] Request failed: {e}")
         return None
 
 
+# =====================================================
+# Response Formatting
+# =====================================================
 def send_result(chat_id: int, result: dict, label: str):
-    """Format and send result to user"""
+    """Format and send backend API results to Telegram user."""
     if not result:
         edit_message(chat_id, None, "⚠️ خطا در دریافت اطلاعات از سرور", reply_markup=get_back_keyboard())
         return
@@ -151,10 +189,9 @@ def send_result(chat_id: int, result: dict, label: str):
     data = result.get("data", {})
     status = data.get("$$_steps", "نامشخص")
 
-    # Base info
     msg = f"✅ وضعیت {label} شما:\n\n📌 وضعیت کلی: {status}\n"
 
-    # Extra fields
+    # Optional fields
     if data.get("warehouseIssueId_referenceNumber"):
         msg += f"🚚 کد رهگیری پستی: {data['warehouseIssueId_referenceNumber']}\n"
     if data.get("warehouseRecieptId_createdOn"):
@@ -168,9 +205,9 @@ def send_result(chat_id: int, result: dict, label: str):
         except Exception:
             msg += f"💰 مبلغ فاکتور (با مالیات): {data['factorId_totalPriceWithTax']} ریال\n"
         if data.get("factorId_paymentLink"):
-            msg += f"💳 لینک پرداخت صورتحساب: {data['factorId_paymentLink']} \n"
+            msg += f"💳 لینک پرداخت صورتحساب: \n{data['factorId_paymentLink']} \n"
 
-    # Items
+    # Items list
     items = data.get("items", [])
     if items:
         msg += f"\n📱 تعداد دستگاه‌ها: {len(items)}\n"
@@ -182,29 +219,30 @@ def send_result(chat_id: int, result: dict, label: str):
                 f"   • وضعیت: {item.get('$$_status', 'نامشخص')}\n"
             )
 
-    more_url = None
-    if len(items) > 8:
-        more_url = "https://hamoonpay.com/"
-
+    # If more than 8 items → show external link
+    more_url = "https://hamoonpay.com/" if len(items) > 8 else None
     keyboard = get_back_keyboard(view_more_url=more_url)
     edit_message(chat_id, None, msg, reply_markup=keyboard)
 
 
-# --- UI & Support ---
+# =====================================================
+# UI Helpers
+# =====================================================
 def show_main_menu(chat_id: int, message_id: int = None, error=False):
+    """Show the main menu with options."""
     keyboard = {
         "inline_keyboard": [
-            [{"text": "🔢 پیگیری سفارش از طریق شماره پذیرش", "callback_data": "order_number"}],
-            [{"text": "#️⃣ پیگیری سفارش از طریق سریال پذیرش", "callback_data": "order_serial"}],
-            [{"text": "👥ارتباط با واحد پشتیبانی ", "callback_data": "support"}],
+            [{"text": "🔢 پیگیری سفارش با شماره پذیرش", "callback_data": "order_number"}],
+            [{"text": "#️⃣ پیگیری سفارش با سریال پذیرش", "callback_data": "order_serial"}],
+            [{"text": "👥 ارتباط با پشتیبانی", "callback_data": "support"}],
         ]
     }
     msg = "❌ لطفا فقط از منوی زیر استفاده کنید ❌" if error else "خوش آمدید 🙌\nلطفا یکی از گزینه‌ها را انتخاب کنید:"
-
     edit_message(chat_id, message_id, msg, reply_markup=keyboard)
 
 
 def send_support_info(chat_id: int, message_id: int = None):
+    """Show support contact options."""
     keyboard = get_back_keyboard()
     keyboard["inline_keyboard"].insert(
         0,
@@ -225,6 +263,7 @@ def send_support_info(chat_id: int, message_id: int = None):
 
 
 def get_back_keyboard(view_more_url: str = None):
+    """Create 'Back to Menu' inline keyboard with optional link."""
     keyboard = {"inline_keyboard": []}
     if view_more_url:
         keyboard["inline_keyboard"].append([{"text": "📂 مشاهده موارد بیشتر", "url": view_more_url}])
@@ -232,33 +271,37 @@ def get_back_keyboard(view_more_url: str = None):
     return keyboard
 
 
+# =====================================================
+# Data Persistence
+# =====================================================
 def save_subject(chat_id: int, text: str):
-    # url = "http://192.168.41.41:8010/api/v1/support/save"  # edit this link
+    """Save support subject (currently only logs)."""
+    # url = "http://192.168.41.41:8010/api/v1/support/save"
     # payload = {"chat_id": chat_id, "message": text}
     # headers = {"auth-token": AUTH_TOKEN, "Content-Type": "application/json"}
     # try:
     #     requests.post(url, json=payload, headers=headers, timeout=10)
     # except requests.exceptions.RequestException as e:
-    #     print(f"[ERROR] Failed to save subject: {e}")
+    #     logging.error(f"[ERROR] Failed to save subject: {e}")
     print(f"[SUPPORT] Subject received from {chat_id}: {text}")
 
 
-
-
-# --- Telegram API Helpers ---
+# =====================================================
+# Telegram API Helpers
+# =====================================================
 def send_message(chat_id: int, text: str, reply_markup=None):
-    """Send a fresh message (used only when we don't want to edit)."""
+    """Send a fresh Telegram message."""
     payload = {"chat_id": chat_id, "text": text}
     if reply_markup:
         payload["reply_markup"] = reply_markup
     try:
         requests.post(f"{TELEGRAM_API_URL}/sendMessage", json=payload, timeout=8)
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Failed to send message: {e}")
+        logging.error(f"[ERROR] Failed to send message: {e}")
 
 
 def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
-    """Edit an existing message if message_id provided, otherwise send a new one."""
+    """Edit an existing Telegram message, or send new if no message_id."""
     payload = {"chat_id": chat_id, "text": text}
     if reply_markup:
         payload["reply_markup"] = reply_markup
@@ -270,4 +313,26 @@ def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
     try:
         requests.post(f"{TELEGRAM_API_URL}/{method}", json=payload, timeout=8)
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Failed to edit/send message: {e}")
+        logging.error(f"[ERROR] Failed to edit/send message: {e}")
+
+
+# =====================================================
+# Scheduler
+# =====================================================
+@app.on_event("startup")
+async def start_scheduler():
+    """Start APScheduler on FastAPI startup."""
+    scheduler.start()
+
+
+def schedule_timeout(chat_id: int, delay: int = 10):
+    """Schedule a timeout to reset user state."""
+    def timeout_job():
+        state = user_states.get(chat_id)
+        if state and time.time() > state.get("expires", 0):
+            user_states.pop(chat_id, None)
+            send_message(chat_id, "⏰ زمان شما به پایان رسید. لطفا دوباره تلاش کنید.")
+            show_main_menu(chat_id)
+
+    run_time = datetime.now() + timedelta(seconds=delay)
+    scheduler.add_job(timeout_job, "date", run_date=run_time)
