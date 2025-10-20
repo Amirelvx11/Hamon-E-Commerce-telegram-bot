@@ -24,9 +24,9 @@ venv/
 .vscode/
 .idea/
 
-# Logs
+# Logs - exclude bot.log specifically
 *.log
-logs/
+bot.log
 
 # IDE
 *.swp
@@ -37,3 +37,7 @@ logs/
 
 # GitHub Actions
 .github/workflows/.cache
+
+# Backup files - exclude dirty backups specifically
+*_dirty_*.txt
+backup_dirty_*.txt
