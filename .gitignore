@@ -9,9 +9,31 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+!.env.test
+
+# Testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
 
 # Versioned artifacts
 env/
 venv/
 .vscode/
 .idea/
+
+# Logs
+*.log
+logs/
+
+# IDE
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# GitHub Actions
+.github/workflows/.cache
