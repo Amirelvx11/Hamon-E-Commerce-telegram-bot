@@ -1,68 +1,74 @@
 """
-Data Provider 
+Data Provider - Handle The Data's come from server
 """
-import os
-import logging
-import json
-import asyncio
+import os, logging, json, asyncio, time, aiohttp
+from aiohttp import ClientTimeout, ClientSession
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
-from datetime import datetime
-import aiohttp
-from aiohttp import ClientTimeout, ClientSession
 
-from .CoreConfig import (
-    BotConfig, STATUS_TEXT, WORKFLOW_STEPS, STEP_ICONS,
-    calculate_progress, generate_progress_bar, get_status_info
-)
+from .CoreConfig import BotConfig, Validators, get_step_info, WORKFLOW_STEPS, STEP_PROGRESS, STEP_ICONS, DEVICE_STATUS
 
 logger = logging.getLogger(__name__)
-
-# =====================================================
-# Data Models
-# =====================================================
 
 @dataclass
 class OrderInfo:
     """Order information with proper field mapping"""
+    # --- Core identifiers ---
     order_number: str
     customer_name: str
-    national_id: str
+    nationalId: str
+    phone_number: str
+    city: str
+    # --- Order-level workflow status ---
+    steps: int                      # numeric workflow stage
+    current_step: str               # text (from WORKFLOW_STEPS)
+    status_icon: str                # icon for current step
+    progress: int                   # percentage (from STEP_PROGRESS)
+    progress_bar: str               # text block visual
+    # --- Device-level info ---
     device_model: str
     serial_number: str
-    status: int
-    steps: int
+    device_status: str              
+    registration_date: str
+    pre_reception_date: str
+    # --- Dates and details ---
     registration_date: str
     pre_reception_date: str
     repair_description: Optional[str] = None
     tracking_code: Optional[str] = None
-    estimated_completion: Optional[str] = None
-    technician_name: Optional[str] = None
     total_cost: Optional[int] = None
-    devices: List[Dict[str, Any]] = None
+    payment_link: Optional[str] = None
+    factor_payment: Optional[Dict[str, Any]] = None
+    devices: Optional[List[Dict[str, Any]]] = None
 
     def to_display_dict(self) -> Dict[str, Any]:
-        """Convert to display format with enhanced UI"""
-        # Get status information
-        status_info = get_status_info(self.status, self.steps)
-        
-        # Build display dictionary
+        """Convert to display format consumable by MessageHandler"""
         return {
             'order_number': self.order_number,
             'customer_name': self.customer_name,
+            'phone_number': self.phone_number,
+            'city': self.city,
+            # Global status (already precomputed)
+            'steps': self.steps,
+            'current_step': self.current_step,
+            'status_icon': self.status_icon,
+            'progress': self.progress,
+            'progress_bar': self.progress_bar,
+            # Device info
             'device_model': self.device_model,
             'serial_number': self.serial_number,
-            'status': status_info['status_text'],
-            'status_icon': status_info['icon'],
-            'current_step': status_info.get('step_text', f"مرحله {self.steps}"),
-            'progress': status_info['progress'],
-            'progress_bar': status_info['progress_bar'],
-            'registration_date': self._format_date(self.registration_date),
-            'pre_reception_date': self._format_date(self.pre_reception_date),
-            'tracking_code': self.tracking_code or "---",
-            'repair_description': self.repair_description or "---",
-            'additional_info': self._format_additional_info(status_info),
-            'devices': self.devices or []
+            'device_status': self.device_status,
+            # Dates
+            'registration_date': self.registration_date,
+            'pre_reception_date': self.pre_reception_date,
+            # Other optional fields
+            'tracking_code': self.tracking_code or '---',
+            'repair_description': self.repair_description or '---',
+            'payment_link': self.payment_link,
+            'total_cost': self.total_cost,
+            'factor_payment': self.factor_payment,
+            'devices': self.devices or [],
         }
     
     def _format_date(self, date_str: str) -> str:
@@ -73,53 +79,24 @@ class OrderInfo:
         if ' ' in date_str:
             return date_str.split(' ')[0]
         return date_str
-    
-    def _format_additional_info(self, status_info: Dict) -> str:
-        """Format additional information"""
-        lines = []
-        
-        # Current stage
-        lines.append(f"📍 مرحله: {status_info['icon']} {status_info.get('step_text', 'نامشخص')}")
-        
-        # Tracking code
-        if self.tracking_code:
-            lines.append(f"🔍 کد رهگیری: {self.tracking_code}")
-        
-        # Repair description
-        if self.repair_description:
-            lines.append(f"📝 تعمیرات: {self.repair_description[:50]}...")
-        
-        # Cost
-        if self.total_cost:
-            lines.append(f"💰 هزینه: {self.total_cost:,.0f} ریال")
-        
-        return "\n".join(lines)
 
 # =====================================================
 # Main DataProvider Class
 # =====================================================
 
 class DataProvider:
-    """API communication manager with caching and error handling"""
-    
+    """API communication manager with caching"""
     def __init__(self, config: BotConfig, redis_client=None):
         self.config = config
         self.redis = redis_client
         self.session: Optional[ClientSession] = None
+        self._lock = asyncio.Lock()
         self._session_lock = asyncio.Lock()
         
         self.cache_prefix = "bot:cache:"
         self.auth_token = os.getenv("AUTH_TOKEN", "")
         self.cache_ttl = 300  # 5 minutes
         self.timeout = ClientTimeout(total=30, connect=10, sock_read=20)
-        
-        # Request tracking
-        self._request_count = 0
-        self._error_count = 0
-    
-    # =====================================================
-    # Context Manager Support
-    # =====================================================
     
     async def __aenter__(self):
         """Async context manager entry"""
@@ -128,69 +105,30 @@ class DataProvider:
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
-        await self.close()
-    
-    async def close(self):
-        """Close all resources"""
         await self.close_session()
-        logger.info(f"DataProvider closed - Requests: {self._request_count}, Errors: {self._error_count}")
     
-    # =====================================================
-    # Cache Methods
-    # =====================================================
-    
-    async def _get_cached(self, key: str) -> Optional[Dict]:
-        """Get cached data"""
+    async def _cache_get(self, key: str) -> Optional[Dict]:
         if not self.redis:
             return None
-        
         try:
             data = await self.redis.get(f"{self.cache_prefix}{key}")
-            if data:
-                logger.debug(f"Cache hit: {key}")
-                return json.loads(data)
-        except Exception as e:
-            logger.debug(f"Cache miss: {key} - {e}")
-        
-        return None
+            return json.loads(data) if data else None
+        except:
+            return None
     
-    async def _set_cached(self, key: str, value: Dict, ttl: int = None) -> None:
-        """Set cached data"""
+    async def _cache_set(self, key: str, value: Dict, ttl: int = 300) -> None:
         if not self.redis:
             return
-        
         try:
             await self.redis.setex(
                 f"{self.cache_prefix}{key}",
-                ttl or self.cache_ttl,
+                ttl,
                 json.dumps(value, ensure_ascii=False)
             )
-            logger.debug(f"Cached: {key}")
-        except Exception as e:
-            logger.debug(f"Cache set failed: {e}")
-    
-    async def clear_cache(self, pattern: str = "*") -> int:
-        """Clear cache entries"""
-        if not self.redis:
-            return 0
-        
-        try:
-            keys = await self.redis.keys(f"{self.cache_prefix}{pattern}")
-            if keys:
-                deleted = await self.redis.delete(*keys)
-                logger.info(f"Cleared {deleted} cache entries")
-                return deleted
-        except Exception as e:
-            logger.error(f"Cache clear failed: {e}")
-        
-        return 0
-    
-    # =====================================================
-    # Session Management
-    # =====================================================
+        except:
+            pass  # Silent fail for caching
     
     async def ensure_session(self):
-        """Ensure HTTP session exists"""
         async with self._session_lock:
             if not self.session or self.session.closed:
                 connector = aiohttp.TCPConnector(
@@ -210,19 +148,15 @@ class DataProvider:
                     }
                 )
                 logger.debug("HTTP session created")
-    
+
     async def close_session(self):
-        """Close HTTP session"""
         async with self._session_lock:
             if self.session and not self.session.closed:
                 await self.session.close()
-                await asyncio.sleep(0.25)  # Allow cleanup
+                await asyncio.sleep(0.1)  # Allow cleanup
                 self.session = None
                 logger.debug("HTTP session closed")
     
-    # =====================================================
-    # Core Request Method
-    # =====================================================
     
     async def _make_request(
         self,
@@ -230,7 +164,7 @@ class DataProvider:
         url: str,
         json_data: Optional[Dict] = None,
         headers: Optional[Dict] = None,
-        retry_count: int = 3
+        retry_count: int = 2
     ) -> Optional[Dict]:
         """Make HTTP request with retry and error handling"""
         await self.ensure_session()
@@ -239,8 +173,7 @@ class DataProvider:
         request_headers = {'auth-token': self.auth_token} if self.auth_token else {}
         if headers:
             request_headers.update(headers)
-        
-        self._request_count += 1
+
         last_error = None
         
         for attempt in range(retry_count):
@@ -251,28 +184,21 @@ class DataProvider:
                     headers=request_headers
                 ) as response:
                     
-                    # Success
                     if response.status == 200:
                         data = await response.json()
                         return data
-                    
-                    # Not found
                     elif response.status == 404:
                         logger.debug(f"Not found: {url}")
                         return None
-                    
-                    # Server error - retry
                     elif response.status >= 500:
                         last_error = f"Server error {response.status}"
                         if attempt < retry_count - 1:
                             await asyncio.sleep(2 ** attempt)
                             continue
-                    
                     # Client error - don't retry
                     else:
                         text = await response.text()
                         logger.error(f"API error {response.status}: {text[:200]}")
-                        self._error_count += 1
                         return None
                         
             except asyncio.TimeoutError:
@@ -280,112 +206,186 @@ class DataProvider:
                 if attempt < retry_count - 1:
                     await asyncio.sleep(2 ** attempt)
                     continue
-                    
             except aiohttp.ClientError as e:
                 last_error = str(e)
                 if attempt < retry_count - 1:
                     await asyncio.sleep(2 ** attempt)
                     continue
-                    
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
-                self._error_count += 1
                 return None
         
         # All retries failed
         logger.error(f"Request failed after {retry_count} attempts: {last_error}")
-        self._error_count += 1
         return None
     
-    # =====================================================
-    # Public API Methods
-    # =====================================================
-    
-    async def get_order_by_number(self, order_number: str) -> Optional[Dict[str, Any]]:
+
+    async def get_order(self, identifier: str, id_type: str = "number", force_refresh: bool = False) -> Optional[Dict[str, Any]]:
+        """Unified order fetching by different identifier types"""
+        
+        logger.info(f"Getting order by {id_type}: {identifier}")
+        
+        # Route to appropriate method based on id_type
+        if id_type == "national_id" or id_type == "nationalId":
+            # For National ID lookup
+            cache_key = f"order:nid:{identifier}"
+            
+            if not force_refresh:
+                cached = await self._cache_get(cache_key)
+                if cached:
+                    logger.debug(f"Cache hit for National ID {identifier}")
+                    return cached
+            
+            # Use the National ID endpoint
+            endpoint = self.config.server_urls.get('national_id') or self.config.server_urls.get('nationalId')
+            if not endpoint:
+                logger.error("National ID endpoint not configured")
+                return None
+            logger.info(f"Fetching National ID {identifier} from API: {endpoint}")
+            
+            json_data = {'nationalId': identifier} 
+            response = await self._make_request('POST', endpoint, json_data=json_data)
+            
+            if response:
+                logger.info(f"🔍 RAW RESPONSE: {json.dumps(response, ensure_ascii=False)[:500]}")
+                
+                if not response.get('success', True):
+                    logger.error(f"API error: {response.get('message')}")
+                    return None
+                
+                order_info = self._parse_order_response(response)
+                if order_info:
+                    logger.info(f"✅ Successfully parsed order for National ID {identifier}")
+                    result = order_info.to_display_dict()
+                    await self._cache_set(cache_key, result, ttl=self.cache_ttl)
+                    return result
+                else:
+                    logger.error(f"❌ Failed to parse: {response}")
+            
+            logger.warning(f"No order found for National ID {identifier}")
+            return None
+            
+        elif id_type == "number":
+            return await self.get_order_by_number(identifier, force_refresh)
+        elif id_type == "serial":
+            return await self.get_order_by_serial(identifier, force_refresh)
+        else:
+            logger.error(f"Invalid id_type: {id_type}")
+            return None
+
+
+    async def get_user_orders(self, national_id: str) -> list:
+        """Get user's orders by national ID"""
+        try:
+            response = await self._make_request(
+                'GET', 
+                self.config.server_urls.get('user_orders'),
+                params={'nationalId': national_id}
+            )
+            
+            if response and response.get('success', True):
+                orders_data = response.get('data', [])
+                # Convert to OrderInfo objects
+                orders = []
+                for order_data in orders_data:
+                    order = self._parse_order_response(order_data)
+                    if order:
+                        orders.append(order)
+                return orders
+            return []
+        except Exception as e:
+            logger.error(f"Error getting user orders: {e}")
+            return []
+
+    async def get_order_by_number(self, order_number: str, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """Get order by tracking number"""
         if not order_number:
             return None
         
-        # Check cache
-        cache_key = f"order:num:{order_number}"
-        cached = await self._get_cached(cache_key)
-        if cached:
-            return cached
-        
-        # Check endpoint
+        cache_key = f"order:number:{order_number}"
+
+        if not force_refresh:
+            cached = await self._cache_get(cache_key)
+            if cached:
+                logger.debug(f"Cache hit for order {order_number}")
+                return cached
+
         endpoint = self.config.server_urls.get('number')
         if not endpoint:
             logger.error("Order tracking endpoint not configured")
             return None
         
-        # Make request
-        response = await self._make_request(
-            'POST', endpoint, 
-            json_data={'number': order_number}
-        )
+        logger.info(f"Fetching order {order_number} from API")
+        
+        json_data = {'number': order_number}
+        response = await self._make_request('POST', endpoint, json_data=json_data)
         
         if not response:
+            logger.warning(f"No response for order {order_number}")
             return None
         
-        # Parse and cache
         order_info = self._parse_order_response(response)
         if order_info:
             result = order_info.to_display_dict()
-            await self._set_cached(cache_key, result)
+            await self._cache_set(cache_key, result, ttl=self.cache_ttl)
             return result
         
+        logger.warning(f"Failed to parse order {order_number}")
         return None
-    
-    async def get_order_by_serial(self, serial: str) -> Optional[Dict[str, Any]]:
+
+    async def get_order_by_serial(self, serial: str, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """Get order by device serial"""
         if not serial:
             return None
-        
-        # Check cache
+
+        is_valid, error_msg = Validators.validate_serial(serial)
+        if not is_valid:
+            logger.warning(f"Invalid serial format: {error_msg}")
+            return None
+
         cache_key = f"order:serial:{serial}"
-        cached = await self._get_cached(cache_key)
-        if cached:
-            return cached
         
-        # Check endpoint
+        if not force_refresh:
+            cached = await self._cache_get(cache_key)
+            if cached:
+                logger.debug(f"Cache hit for serial {serial}")
+                return cached
+        
         endpoint = self.config.server_urls.get('serial')
         if not endpoint:
             logger.error("Serial tracking endpoint not configured")
             return None
         
-        # Make request
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={'serial': serial}
-        )
+        logger.info(f"Fetching serial {serial} from API")
+        
+        json_data = {'serial': serial}
+        response = await self._make_request('POST', endpoint, json_data=json_data)
         
         if not response:
+            logger.warning(f"No response for serial {serial}")
             return None
         
-        # Parse and cache
         order_info = self._parse_order_response(response)
         if order_info:
             result = order_info.to_display_dict()
-            await self._set_cached(cache_key, result)
+            await self._cache_set(cache_key, result, ttl=self.cache_ttl)
             return result
         
+        logger.warning(f"Failed to parse serial {serial}")
         return None
-    
+
     async def authenticate_user(self, national_id: str) -> Optional[Dict]:
         """Authenticate user by national ID"""
         if not national_id:
             return None
         
-        # Check cache
         cache_key = f"user:nid:{national_id}"
-        cached = await self._get_cached(cache_key)
+        cached = await self._cache_get(cache_key)
         if cached:
             return cached
         
-        # Check endpoint
         endpoint = self.config.server_urls.get('national_id')
         if not endpoint:
-            # Return mock data for testing
             logger.warning("Auth endpoint not configured - using mock")
             return {
                 'name': 'کاربر آزمایشی',
@@ -394,167 +394,210 @@ class DataProvider:
                 'authenticated': True
             }
         
-        # Make request
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={'national_id': national_id}
-        )
+        response = await self._make_request('POST', endpoint, json_data={'nationalId': national_id})
         
         if response:
-            user_data = self._parse_user_response(response)
-            if user_data:
-                await self._set_cached(cache_key, user_data, ttl=1800)  # 30 min
+            # Check if it's an error response
+            if not response.get('success', True):
+                logger.warning(f"Auth failed: {response.get('message')}")
+                return None
+            
+            # The National ID endpoint returns order data, extract user info from it
+            data = response.get('data', response)
+            if data:
+                user_data = {
+                    'name': data.get('$$_contactId', 'نامشخص'),
+                    'phone_number': data.get('contactId_phone', 'نامشخص'),
+                    'city': data.get('contactId_cityId', 'نامشخص'),
+                    'national_id': (
+                        data.get('contactId_nationalCode') 
+                        or data.get('contactId_nationalId') 
+                        or national_id
+                    ),
+                    'authenticated': True
+                }
+                await self._cache_set(cache_key, user_data, ttl=1800)
                 return user_data
         
         return None
-    
-    async def get_user_orders(self, national_id: str) -> List[Dict]:
-        """Get all orders for a user"""
-        if not national_id:
-            return []
+
+    async def submit_complaint(self, national_id: str, complaint_type: str, description: str, 
+                            user_name: str, phone_number: str) -> Optional[str]:
+        """Submit complaint to API with validation and error handling"""
         
-        endpoint = self.config.server_urls.get('user_orders')
-        if not endpoint:
-            return []
+        if not all([national_id, complaint_type, description]):
+            logger.error("Missing required complaint fields")
+            return None
         
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={'national_id': national_id}
-        )
+        if len(description.strip()) < 10:
+            logger.error("Complaint description too short")
+            return None
         
-        if response:
-            orders = response.get('data', response.get('orders', []))
-            return [self._parse_order_response({'data': order}).to_display_dict() 
-                   for order in orders if order]
+        if self.redis:
+            rate_key = f"complaint:rate:{national_id}"
+            count = await self.redis.incr(rate_key)
+            if count == 1:
+                await self.redis.expire(rate_key, 3600)
+            if count > 5:
+                logger.warning(f"Rate limit exceeded for {national_id}")
+                return None
         
-        return []
-    
-    async def submit_complaint(
-        self, 
-        national_id: str, 
-        complaint_type: str, 
-        text: str
-    ) -> Optional[str]:
-        """Submit complaint/suggestion"""
         endpoint = self.config.server_urls.get('submit_complaint')
         if not endpoint:
-            # Mock response for testing
-            return f"MOCK-{datetime.now().timestamp():.0f}"
+            logger.warning("Complaint endpoint not configured")
+            import time
+            return f"TKT-MOCK-{int(time.time())}"
         
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={
-                'national_id': national_id,
-                'type': complaint_type,
-                'text': text,
-                'timestamp': datetime.now().isoformat()
-            }
-        )
+        json_data = {
+            'nationalId': national_id.strip(),
+            'complaintType': complaint_type.strip(),
+            'description': description.strip(),
+            'userName': user_name or "",
+            'phoneNumber': phone_number or ""
+        }
+        
+        response = await self._make_request('POST', endpoint, json_data=json_data)
         
         if response:
-            return response.get('ticket_number', response.get('id'))
+            if response.get('success', True): 
+                ticket = (response.get('ticket_number') or 
+                        response.get('ticketNumber') or 
+                        response.get('id') or 
+                        response.get('ticketId'))
+                
+                if ticket:
+                    logger.info(f"✅ Complaint submitted: {ticket}")
+                    await self._cache_set(f"complaint:{ticket}", json_data, ttl=86400)  # Cache for 24h
+                    return ticket
+                else:
+                    logger.warning("API success but no ticket returned")
+            else:
+                error_msg = response.get('message', 'Unknown API error')
+                logger.error(f"❌ Complaint failed: {error_msg}")
         
+        logger.error("❌ No response from complaint API")
         return None
-    
-    async def submit_rating(
-        self, 
-        national_id: str, 
-        score: int, 
-        comment: str = ""
-    ) -> bool:
-        """Submit service rating"""
-        endpoint = self.config.server_urls.get('submit_rating')
-        if not endpoint:
-            return True  # Mock success
-        
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={
-                'national_id': national_id,
-                'score': score,
-                'comment': comment,
-                'timestamp': datetime.now().isoformat()
-            }
-        )
-        
-        return response is not None
-    
-    async def submit_repair_request(
-        self,
-        national_id: str,
-        description: str,
-        contact: str
-    ) -> Optional[str]:
+
+
+    async def submit_repair_request(self, nationalId: str, description: str, contact: str) -> Optional[str]:
         """Submit repair request"""
-        endpoint = self.config.server_urls.get('submit_repair')
-        if not endpoint:
-            return f"MOCK-{datetime.now().timestamp():.0f}"
+        return await self.submit_data('repair', nationalId, description=description, contact=contact)
 
-        response = await self._make_request(
-            'POST', endpoint,
-            json_data={
-                'national_id': national_id,
-                'description': description,
-                'contact': contact,
-                'timestamp': datetime.now().isoformat()
-            }
-        )
-
-        if response:
-            return response.get('request_number', response.get('id'))
-        return None
-
-    # =====================================================
-    # Response Parsing
-    # =====================================================
 
     def _parse_order_response(self, response: Dict) -> Optional[OrderInfo]:
-        """Parse an order API response into OrderInfo dataclass"""
+        """Parse order API response - preserving all server fields"""
         try:
             data = response.get('data', response)
-            devices = data.get('items', data.get('devices', []))
-            first = devices[0] if devices else {}
+            if isinstance(data, list):
+                data = data[0] if data else {}
+
+            # --- Device normalization ---
+            devices_raw = data.get('items', []) or []
+            normalized_devices = []
+            for d in devices_raw:
+                status_raw = d.get('status', 0)
+                if isinstance(status_raw, str):
+                    rev_device_status = {v: k for k, v in DEVICE_STATUS.items()}
+                    status_code = rev_device_status.get(status_raw.strip(), 0)
+                else:
+                    status_code = int(status_raw) if isinstance(status_raw, int) else 0
+                normalized_devices.append({
+                    "model": d.get('$$_deviceId', 'نامشخص'),
+                    "serial": d.get('serialNumber', '---'),
+                    "status": DEVICE_STATUS.get(status_code, 'نامشخص'),
+                    "status_code": status_code
+                })
+            first_device = normalized_devices[0] if normalized_devices else {}
+
+            # --- Order-level status (steps) ---
+            steps_raw = data.get('steps', data.get('status', 0))
+            if isinstance(steps_raw, str):
+                rev_steps = {v: k for k, v in {**WORKFLOW_STEPS, **DEVICE_STATUS}.items()}
+                steps_int = rev_steps.get(steps_raw.strip(), 0)
+            else:
+                steps_int = steps_raw if isinstance(steps_raw, int) else 0
+
+            # --- Pre-calc progress metadata ---
+            step_info = get_step_info(steps_int)
 
             return OrderInfo(
-                order_number=str(data.get('number', '')),
-                customer_name=data.get('contactId_name', 'نامشخص'),
-                national_id=data.get('contactId_nationalCode', ''),
-                device_model=first.get('$$_deviceId', data.get('$$_deviceId', 'نامشخص')),
-                serial_number=first.get('serialNumber', data.get('serialNumber', '')),
-                status=int(data.get('status', 0)),
-                steps=int(data.get('steps', 0)),
-                registration_date=data.get('warehouseRecieptId_createdOn', ''),
+                order_number=str(data.get('number', data.get('processNumber', ''))),
+                customer_name=data.get('$$_contactId', 'نامشخص'),
+                phone_number=data.get('contactId_phone', ''),
+                nationalId=data.get('contactId_nationalCode') or data.get('contactId_nationalId'),
+                city=data.get('contactId_cityId', ''),
+                steps=steps_int,
+                current_step=step_info['text'],
+                status_icon=step_info['icon'],
+                progress=step_info['progress'],
+                progress_bar=f"[{step_info['bar']}]",
+                device_model=first_device.get('model', 'نامشخص'),
+                serial_number=first_device.get('serial', '---'),
+                device_status=first_device.get('status', 'نامشخص'),
+                registration_date=data.get('warehouseRecieptId_createdOn', data.get('createdOn', '')),
                 pre_reception_date=data.get('preReceptionId_createdOn', ''),
-                repair_description=first.get('passDescription'),
-                tracking_code=str(data.get('preReceptionId_number', '')),
+                repair_description=first_device.get('passDescription', ''),
+                tracking_code=str(data.get('preReceptionId_number', '')) if data.get('preReceptionId_number') else None,
                 total_cost=data.get('factorId_totalPriceWithTax'),
-                devices=devices
+                payment_link=data.get('factorId_paymentLink'),
+                factor_payment=data.get('factorPayment'),
+                devices=normalized_devices
             )
         except Exception as e:
-            logger.error(f"Order parse error: {e}")
+            logger.error(f"Error parsing order response: {e}", exc_info=True)
             return None
+
 
     def _parse_user_response(self, response: Dict) -> Optional[Dict]:
         """Parse user authentication response"""
         try:
-            data = response.get('data', response.get('user', response))
+            # Handle both wrapped and unwrapped responses
+            data = response.get('data', response)
+            
+            # For National ID lookups, the user info is in the main data
             return {
-                'name': data.get('name', 'نامشخص'),
-                'phone': data.get('phone', '---'),
-                'national_id': data.get('national_id', '---'),
+                'name': data.get('$$_contactId', data.get('name', 'نامشخص')),
+                'phone': data.get('contactId_phone', data.get('phone', '')),
+                'national_id': data.get('contactId_nationalCode', 'contactId_nationalId'),
                 'authenticated': True
             }
         except Exception as e:
-            logger.error(f"User parse error: {e}")
+            logger.error(f"Error parsing user response: {e}")
             return None
 
 
-# =====================================================
-# Factory Function
-# =====================================================
+
+    async def submit_data(
+        self,
+        submission_type: str,
+        national_id: str,
+        **kwargs
+    ) -> Optional[str]:
+        """Unified submission method for complaints and repairs"""
+        endpoint = self.config.server_urls.get(f'submit_{submission_type}')
+        
+        if not endpoint:
+            # Return mock data for testing
+            return f"MOCK-{datetime.now().timestamp():.0f}"
+        
+        # Build request data
+        json_data = {
+            'nationalId': national_id,
+            'timestamp': datetime.now().isoformat(),
+            **kwargs
+        }
+        
+        response = await self._make_request('POST', endpoint, json_data=json_data)
+
+        
+        # For complaints and repairs, return ticket number
+        if response:
+            return response.get('ticketNumber', response.get('id', f"REF-{datetime.now().timestamp():.0f}"))
+        return None
+
 
 async def create_data_provider(config: BotConfig, redis_client=None) -> DataProvider:
-    """Factory to create and initialize data provider"""
+    """Factory initializer for DataProvider."""
     provider = DataProvider(config, redis_client)
     await provider.ensure_session()
     logger.info("✅ DataProvider ready")

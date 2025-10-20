@@ -1,0 +1,507 @@
+2025-10-18 15:46:26,614 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 15:46:26,615 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 15:46:26,616 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 15:46:30,105 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 15:46:30,524 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 15:46:30,524 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 15:47:04,143 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 15:48:56,183 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 15:48:56,183 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 15:48:56,183 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 15:48:58,798 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 15:48:59,265 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 15:48:59,267 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 15:49:03,633 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 15:49:21,162 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 15:52:48,294 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 15:52:48,295 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 15:52:48,295 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 15:53:03,522 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 15:53:04,077 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 15:53:04,077 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 15:53:15,513 - modules.MessageHandler - INFO - Looking up serial: 00HEC057872
+2025-10-18 15:53:15,666 - modules.DataProvider - INFO - Fetching serial 00HEC057872 from API
+2025-10-18 15:53:27,285 - modules.MessageHandler - INFO - Looking up serial: 00HEC057872
+2025-10-18 15:53:41,250 - modules.MessageHandler - INFO - Looking up number: 69925
+2025-10-18 15:53:53,886 - modules.MessageHandler - INFO - Looking up number: 69925
+2025-10-18 15:54:50,878 - modules.DataProvider - INFO - Getting order by nationalId: 10101850423
+2025-10-18 15:54:50,878 - modules.DataProvider - INFO - Fetching National ID 10101850423 from API: http://192.168.41.41:8010/api/v1/ass-process/GetByNationalID
+2025-10-18 15:54:51,492 - modules.DataProvider - INFO - 🔍 RAW RESPONSE: {"data": {"rowCounter": 1, "id": "aac6c336-8e51-43f9-99cd-1671662e243b", "number": 72517, "status": 1, "$$_status": "پیش پذیرش", "steps": 1, "$$_steps": "پیش پذیرش", "contactId": "cd88a7a5-f052-4dc3-a0be-a4d33bbe6151", "$$_contactId": "تجارت الکترونیک پارسیان ", "contactId_phone": "09131652344", "cityId": "0d380218-bed9-40b1-938f-11bd862afb0c", "contactId_cityId": "تهران تهران", "group": 1, "contactId_group": "VIP", "mode": 3, "contactId_mode": "کارگزار", "contactId_nationalCode": "", "contactId
+2025-10-18 15:54:51,494 - modules.DataProvider - INFO - ✅ Successfully parsed order for National ID 10101850423
+2025-10-18 15:55:00,099 - modules.DataProvider - INFO - Fetching order order:72517 from API
+2025-10-18 15:55:16,027 - modules.DataProvider - INFO - Getting order by nationalId: 10101850423
+2025-10-18 15:55:16,027 - modules.DataProvider - INFO - Fetching National ID 10101850423 from API: http://192.168.41.41:8010/api/v1/ass-process/GetByNationalID
+2025-10-18 15:55:16,653 - modules.DataProvider - INFO - 🔍 RAW RESPONSE: {"data": {"rowCounter": 1, "id": "aac6c336-8e51-43f9-99cd-1671662e243b", "number": 72517, "status": 1, "$$_status": "پیش پذیرش", "steps": 1, "$$_steps": "پیش پذیرش", "contactId": "cd88a7a5-f052-4dc3-a0be-a4d33bbe6151", "$$_contactId": "تجارت الکترونیک پارسیان ", "contactId_phone": "09131652344", "cityId": "0d380218-bed9-40b1-938f-11bd862afb0c", "contactId_cityId": "تهران تهران", "group": 1, "contactId_group": "VIP", "mode": 3, "contactId_mode": "کارگزار", "contactId_nationalCode": "", "contactId
+2025-10-18 15:55:16,655 - modules.DataProvider - INFO - ✅ Successfully parsed order for National ID 10101850423
+2025-10-18 15:55:57,363 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 15:55:57,364 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 15:55:57,366 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 15:56:00,065 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 15:56:00,528 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 15:56:00,529 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 15:58:32,662 - modules.SessionManager - ERROR - Save error: Object of type ComplaintType is not JSON serializable
+2025-10-18 15:58:42,123 - modules.MessageHandler - INFO - Looking up number: 69925
+2025-10-18 15:58:42,280 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 16:08:30,473 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 16:08:30,474 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 16:08:30,475 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 16:08:37,067 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 16:08:37,703 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 16:08:37,709 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 16:09:12,225 - modules.MessageHandler - INFO - Looking up serial: 00HEC057872
+2025-10-18 16:09:12,379 - modules.DataProvider - INFO - Fetching serial 00HEC057872 from API
+2025-10-18 16:13:30,357 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 16:13:30,357 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 16:13:30,357 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 16:13:32,930 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 16:13:35,373 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 16:13:35,376 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 16:20:23,940 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 16:20:23,940 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 16:20:23,941 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 16:20:26,593 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 16:20:26,956 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 16:20:26,956 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 16:22:08,434 - modules.MessageHandler - INFO - Looking up serial: 00HEC057872
+2025-10-18 16:22:08,663 - modules.DataProvider - INFO - Fetching serial 00HEC057872 from API
+2025-10-18 16:22:33,234 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 16:22:58,321 - modules.DataProvider - INFO - Fetching order 69925 from API
+2025-10-18 16:24:49,360 - modules.DataProvider - INFO - Getting order by nationalId: 2420719020
+2025-10-18 16:24:49,365 - modules.DataProvider - INFO - Fetching National ID 2420719020 from API: http://192.168.41.41:8010/api/v1/ass-process/GetByNationalID
+2025-10-18 16:24:49,581 - modules.DataProvider - INFO - 🔍 RAW RESPONSE: {"data": {"rowCounter": 1, "id": "abfc77cb-a514-470e-969b-4aae55324eae", "number": 71293, "status": 1, "$$_status": "پیش پذیرش", "steps": 1, "$$_steps": "پیش پذیرش", "contactId": "d0b37a08-5f3b-4f53-966d-268989466457", "$$_contactId": "پویا زارعی", "contactId_phone": "09910566399", "cityId": "ad680525-9414-444b-8004-05db018e59e9", "contactId_cityId": "فارس پاسارگاد", "group": 0, "contactId_group": "ِD", "mode": 1, "contactId_mode": "مشتری نهایی", "contactId_nationalCode": "2420719020", "contactI
+2025-10-18 16:24:49,583 - modules.DataProvider - INFO - ✅ Successfully parsed order for National ID 2420719020
+2025-10-18 16:46:16,293 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 16:46:16,318 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 16:46:16,403 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 16:50:02,315 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 16:50:03,613 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 16:50:03,613 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 16:59:23,630 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 16:59:23,630 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 16:59:23,630 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 16:59:26,616 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 16:59:27,013 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 16:59:27,014 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 17:07:29,230 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 17:07:29,231 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 17:07:29,231 - __main__ - INFO - 🔚 Bot stopped
+2025-10-18 17:07:31,696 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-18 17:07:32,133 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-18 17:07:32,133 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-18 17:18:01,832 - modules.SessionManager - INFO - Redis disconnected
+2025-10-18 17:18:01,832 - __main__ - INFO - ✅ Cleanup completed
+2025-10-18 17:18:01,833 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 08:58:58,808 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 08:59:02,626 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 08:59:02,627 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 08:59:46,130 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 08:59:46,889 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 08:59:46,890 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 08:59:49,937 - modules.SessionManager - INFO - New session created: 778562716
+2025-10-19 08:59:50,080 - modules.MessageHandler - ERROR - Error sending message to 778562716: ExtBot.send_message() got an unexpected keyword argument 'reply_markup_reply'
+2025-10-19 09:02:03,181 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 09:02:03,182 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 09:02:03,183 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 09:02:06,386 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 09:02:07,067 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 09:02:07,067 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 09:02:19,296 - modules.MessageHandler - ERROR - Error sending message to 778562716: ExtBot.send_message() got an unexpected keyword argument 'reply_markup_reply'
+2025-10-19 09:03:16,928 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 09:03:16,928 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 09:03:16,929 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 09:03:23,350 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 09:03:23,948 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 09:03:23,948 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 09:03:28,504 - modules.MessageHandler - ERROR - Error sending message to 778562716: ExtBot.send_message() got an unexpected keyword argument 'reply_markup_reply'
+2025-10-19 09:03:30,431 - modules.MessageHandler - ERROR - Error in process_message: ExtBot.send_message() missing 1 required positional argument: 'text'
+2025-10-19 09:03:31,157 - modules.MessageHandler - ERROR - Error in process_message: ExtBot.send_message() missing 1 required positional argument: 'text'
+2025-10-19 09:03:32,560 - modules.MessageHandler - ERROR - Error in process_message: ExtBot.send_message() missing 1 required positional argument: 'text'
+2025-10-19 09:03:33,643 - modules.MessageHandler - ERROR - Error in process_message: ExtBot.send_message() missing 1 required positional argument: 'text'
+2025-10-19 09:28:56,577 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 09:28:56,578 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 09:28:56,579 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 09:28:59,504 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 09:29:00,105 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 09:29:00,106 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 09:29:53,838 - modules.SessionManager - INFO - New session created: 778562716
+2025-10-19 09:55:02,525 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 09:55:02,525 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 09:55:02,526 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 09:55:04,946 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 09:55:05,566 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 09:55:05,567 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 09:55:26,392 - modules.DataProvider - WARNING - Auth failed: کد ملی در سیستم یافت نشد
+2025-10-19 09:56:26,433 - modules.MessageHandler - INFO - Looking up number: 1234560
+2025-10-19 09:56:26,701 - modules.DataProvider - INFO - Fetching order 1234560 from API
+2025-10-19 09:56:41,359 - modules.MessageHandler - INFO - Looking up number: 72113
+2025-10-19 09:56:41,628 - modules.DataProvider - INFO - Fetching order 72113 from API
+2025-10-19 09:56:51,425 - modules.MessageHandler - INFO - Looking up number: 123456
+2025-10-19 09:56:51,661 - modules.DataProvider - INFO - Fetching order 123456 from API
+2025-10-19 09:56:57,953 - modules.MessageHandler - INFO - Looking up number: 123
+2025-10-19 09:56:58,185 - modules.DataProvider - INFO - Fetching order 123 from API
+2025-10-19 09:57:03,448 - modules.MessageHandler - INFO - Looking up number: 1
+2025-10-19 09:57:03,683 - modules.DataProvider - INFO - Fetching order 1 from API
+2025-10-19 09:57:08,044 - modules.MessageHandler - INFO - Looking up serial: 123
+2025-10-19 09:57:08,299 - modules.DataProvider - INFO - Fetching serial 123 from API
+2025-10-19 09:57:21,124 - modules.MessageHandler - INFO - Looking up serial: 063350
+2025-10-19 09:57:21,682 - modules.DataProvider - INFO - Fetching serial 063350 from API
+2025-10-19 09:57:27,119 - modules.DataProvider - INFO - Fetching order 72113 from API
+2025-10-19 09:59:33,161 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 09:59:33,162 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 09:59:33,162 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 09:59:35,684 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 09:59:36,191 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 09:59:36,192 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 10:07:24,553 - modules.SessionManager - INFO - New session created: 778562716
+2025-10-19 10:07:39,123 - modules.DataProvider - WARNING - Auth failed: کد ملی در سیستم یافت نشد
+2025-10-19 10:08:49,395 - modules.DataProvider - INFO - Getting order by nationalId: 10800174840
+2025-10-19 10:08:49,396 - modules.DataProvider - INFO - Fetching National ID 10800174840 from API: http://192.168.41.41:8010/api/v1/ass-process/GetByNationalID
+2025-10-19 10:08:49,727 - modules.DataProvider - INFO - 🔍 RAW RESPONSE: {"data": {"rowCounter": 1, "id": "c339efa8-66ca-45c0-9897-4d9f21e8d954", "number": 72470, "status": 3, "$$_status": "تعمیرات", "steps": 3, "$$_steps": "تعمیرات", "contactId": "dd049c16-5a95-4007-89cf-91ea20cdfe98", "$$_contactId": "آسان تجارت رائیکا ", "contactId_phone": "09364299959", "cityId": "a5f3133f-2d86-49fa-bf50-d9898a3190b9", "contactId_cityId": "هرمزگان بندرعباس", "group": 4, "contactId_group": "C", "mode": 2, "contactId_mode": "نماینده", "contactId_nationalCode": "10800174840", "conta
+2025-10-19 10:08:49,728 - modules.DataProvider - INFO - ✅ Successfully parsed order for National ID 10800174840
+2025-10-19 10:09:11,213 - modules.MessageHandler - INFO - Looking up number: 72470
+2025-10-19 10:09:11,499 - modules.DataProvider - INFO - Fetching order 72470 from API
+2025-10-19 10:09:22,228 - modules.MessageHandler - INFO - Looking up serial: 72470
+2025-10-19 10:09:22,458 - modules.DataProvider - INFO - Fetching serial 72470 from API
+2025-10-19 10:12:01,095 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 10:12:01,096 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 10:12:01,096 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 10:12:04,783 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 10:12:05,386 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 10:12:05,386 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 10:13:42,249 - telegram.ext.Updater - ERROR - Error while calling `get_updates` one more time to mark all fetched updates as read: %s. Suppressing error to ensure graceful shutdown. When polling for updates is restarted, updates may be fetched again. Please adjust timeouts via `ApplicationBuilder` or the parameter `get_updates_request` of `Bot`.
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_async\connection.py", line 156, in _connect
+    stream = await stream.start_tls(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_backends\anyio.py", line 67, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_updater.py", line 400, in _get_updates_cleanup
+    await self.bot.get_updates(
+    ...<4 lines>...
+    )
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_bot.py", line 4780, in get_updates
+    await self._post(
+    ^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    ),
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\request\_httpxrequest.py", line 296, in do_request
+    raise TimedOut from err
+telegram.error.TimedOut: Timed out
+2025-10-19 10:13:42,653 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 10:13:42,654 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 10:13:42,657 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 10:13:46,541 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 10:13:47,361 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 10:13:47,363 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 10:19:27,267 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 10:19:27,268 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 10:19:27,268 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 10:19:29,512 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 10:19:30,140 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 10:19:30,142 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 10:42:01,470 - __main__ - ERROR - Update None caused error httpx.RemoteProtocolError: Server disconnected without sending a response.
+NoneType: None
+2025-10-19 11:12:24,689 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 11:12:24,690 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 11:12:24,691 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 11:12:28,331 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 11:12:28,883 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 11:12:28,884 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 11:12:44,483 - modules.SessionManager - INFO - New session created: 778562716
+2025-10-19 11:31:55,522 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 11:31:55,523 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 11:31:55,524 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 11:31:58,118 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 11:31:58,730 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 11:31:58,731 - __main__ - INFO - ✅ Bot components initialized successfully
+2025-10-19 11:32:05,356 - __main__ - ERROR - Update Update(message=Message(channel_chat_created=False, chat=Chat(first_name='ᴀᴍɪʀ¹¹', id=778562716, type=<ChatType.PRIVATE>, username='Amir11'), date=datetime.datetime(2025, 10, 19, 8, 2, 5, tzinfo=datetime.timezone.utc), delete_chat_photo=False, entities=(MessageEntity(length=5, offset=0, type=<MessageEntityType.BOT_COMMAND>),), from_user=User(first_name='ᴀᴍɪʀ¹¹', id=778562716, is_bot=False, language_code='en', username='Amir11'), group_chat_created=False, message_id=2934, supergroup_chat_created=False, text='/help'), update_id=911464688) caused error _ChatBase.__init__() missing 1 required positional argument: 'type'
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\telegram-bot\main.py", line 55, in cmd_help
+    await handler.show_help(update.effective_chat.id)
+  File "D:\telegram-bot\modules\MessageHandler.py", line 243, in show_help
+    fake_update = self._create_fake_update(chat_id, message_id, "help")
+  File "D:\telegram-bot\modules\MessageHandler.py", line 249, in _create_fake_update
+    fake_message = TelegramMessage.de_json({
+        'message_id': message_id or 1,
+        'chat': {'id': chat_id},
+        'date': int(datetime.now().timestamp())
+    }, self.bot)
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 1659, in de_json
+    return super()._de_json(  # type: ignore[return-value]
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        data=data, bot=bot, api_kwargs=api_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 223, in _de_json
+    data["chat"] = de_json_optional(data.get("chat"), Chat, bot)
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_utils\argumentparsing.py", line 134, in de_json_optional
+    return cls.de_json(data, bot)
+           ~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 433, in de_json
+    return cls._de_json(data=data, bot=bot)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 397, in _de_json
+    obj = cls(**data, api_kwargs=api_kwargs)
+TypeError: _ChatBase.__init__() missing 1 required positional argument: 'type'
+2025-10-19 11:32:10,185 - __main__ - ERROR - Update Update(message=Message(channel_chat_created=False, chat=Chat(first_name='ᴀᴍɪʀ¹¹', id=778562716, type=<ChatType.PRIVATE>, username='Amir11'), date=datetime.datetime(2025, 10, 19, 8, 2, 10, tzinfo=datetime.timezone.utc), delete_chat_photo=False, entities=(MessageEntity(length=5, offset=0, type=<MessageEntityType.BOT_COMMAND>),), from_user=User(first_name='ᴀᴍɪʀ¹¹', id=778562716, is_bot=False, language_code='en', username='Amir11'), group_chat_created=False, message_id=2936, supergroup_chat_created=False, text='/menu'), update_id=911464689) caused error _ChatBase.__init__() missing 1 required positional argument: 'type'
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\telegram-bot\main.py", line 49, in cmd_menu
+    await handler.show_menu(update.effective_chat.id)
+  File "D:\telegram-bot\modules\MessageHandler.py", line 235, in show_menu
+    fake_update = self._create_fake_update(chat_id, message_id, "main_menu")
+  File "D:\telegram-bot\modules\MessageHandler.py", line 249, in _create_fake_update
+    fake_message = TelegramMessage.de_json({
+        'message_id': message_id or 1,
+        'chat': {'id': chat_id},
+        'date': int(datetime.now().timestamp())
+    }, self.bot)
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 1659, in de_json
+    return super()._de_json(  # type: ignore[return-value]
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        data=data, bot=bot, api_kwargs=api_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 223, in _de_json
+    data["chat"] = de_json_optional(data.get("chat"), Chat, bot)
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_utils\argumentparsing.py", line 134, in de_json_optional
+    return cls.de_json(data, bot)
+           ~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 433, in de_json
+    return cls._de_json(data=data, bot=bot)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 397, in _de_json
+    obj = cls(**data, api_kwargs=api_kwargs)
+TypeError: _ChatBase.__init__() missing 1 required positional argument: 'type'
+2025-10-19 11:32:11,483 - __main__ - ERROR - Update Update(message=Message(channel_chat_created=False, chat=Chat(first_name='ᴀᴍɪʀ¹¹', id=778562716, type=<ChatType.PRIVATE>, username='Amir11'), date=datetime.datetime(2025, 10, 19, 8, 2, 11, tzinfo=datetime.timezone.utc), delete_chat_photo=False, entities=(MessageEntity(length=7, offset=0, type=<MessageEntityType.BOT_COMMAND>),), from_user=User(first_name='ᴀᴍɪʀ¹¹', id=778562716, is_bot=False, language_code='en', username='Amir11'), group_chat_created=False, message_id=2938, supergroup_chat_created=False, text='/logout'), update_id=911464690) caused error _ChatBase.__init__() missing 1 required positional argument: 'type'
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\telegram-bot\main.py", line 69, in cmd_logout
+    await handler.show_menu(chat_id)
+  File "D:\telegram-bot\modules\MessageHandler.py", line 235, in show_menu
+    fake_update = self._create_fake_update(chat_id, message_id, "main_menu")
+  File "D:\telegram-bot\modules\MessageHandler.py", line 249, in _create_fake_update
+    fake_message = TelegramMessage.de_json({
+        'message_id': message_id or 1,
+        'chat': {'id': chat_id},
+        'date': int(datetime.now().timestamp())
+    }, self.bot)
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 1659, in de_json
+    return super()._de_json(  # type: ignore[return-value]
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        data=data, bot=bot, api_kwargs=api_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 223, in _de_json
+    data["chat"] = de_json_optional(data.get("chat"), Chat, bot)
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_utils\argumentparsing.py", line 134, in de_json_optional
+    return cls.de_json(data, bot)
+           ~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 433, in de_json
+    return cls._de_json(data=data, bot=bot)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 397, in _de_json
+    obj = cls(**data, api_kwargs=api_kwargs)
+TypeError: _ChatBase.__init__() missing 1 required positional argument: 'type'
+2025-10-19 11:32:13,101 - __main__ - ERROR - Update Update(message=Message(channel_chat_created=False, chat=Chat(first_name='ᴀᴍɪʀ¹¹', id=778562716, type=<ChatType.PRIVATE>, username='Amir11'), date=datetime.datetime(2025, 10, 19, 8, 2, 12, tzinfo=datetime.timezone.utc), delete_chat_photo=False, entities=(MessageEntity(length=7, offset=0, type=<MessageEntityType.BOT_COMMAND>),), from_user=User(first_name='ᴀᴍɪʀ¹¹', id=778562716, is_bot=False, language_code='en', username='Amir11'), group_chat_created=False, message_id=2940, supergroup_chat_created=False, text='/cancel'), update_id=911464691) caused error _ChatBase.__init__() missing 1 required positional argument: 'type'
+Traceback (most recent call last):
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\telegram-bot\main.py", line 82, in cmd_cancel
+    await handler.show_menu(chat_id)
+  File "D:\telegram-bot\modules\MessageHandler.py", line 235, in show_menu
+    fake_update = self._create_fake_update(chat_id, message_id, "main_menu")
+  File "D:\telegram-bot\modules\MessageHandler.py", line 249, in _create_fake_update
+    fake_message = TelegramMessage.de_json({
+        'message_id': message_id or 1,
+        'chat': {'id': chat_id},
+        'date': int(datetime.now().timestamp())
+    }, self.bot)
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 1659, in de_json
+    return super()._de_json(  # type: ignore[return-value]
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        data=data, bot=bot, api_kwargs=api_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_message.py", line 223, in _de_json
+    data["chat"] = de_json_optional(data.get("chat"), Chat, bot)
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_utils\argumentparsing.py", line 134, in de_json_optional
+    return cls.de_json(data, bot)
+           ~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 433, in de_json
+    return cls._de_json(data=data, bot=bot)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\agra\AppData\Local\Programs\Python\Python313\Lib\site-packages\telegram\_telegramobject.py", line 397, in _de_json
+    obj = cls(**data, api_kwargs=api_kwargs)
+TypeError: _ChatBase.__init__() missing 1 required positional argument: 'type'
+2025-10-19 11:32:14,271 - modules.CallbackHandler - INFO - Callback 'help' from user 778562716 in chat 778562716
+2025-10-19 11:32:15,491 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:32:16,731 - modules.CallbackHandler - INFO - Callback 'track_by_number' from user 778562716 in chat 778562716
+2025-10-19 11:32:17,631 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:32:18,587 - modules.CallbackHandler - INFO - Callback 'track_by_serial' from user 778562716 in chat 778562716
+2025-10-19 11:32:22,421 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:32:23,907 - modules.CallbackHandler - INFO - Callback 'track_by_number' from user 778562716 in chat 778562716
+2025-10-19 11:32:24,755 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:32:25,755 - modules.CallbackHandler - INFO - Callback 'authenticate' from user 778562716 in chat 778562716
+2025-10-19 11:32:27,148 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:56:30,978 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 11:56:30,978 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 11:56:30,979 - __main__ - INFO - 🔚 Bot stopped
+2025-10-19 11:56:34,578 - __main__ - INFO - 🚀 Starting HamoonBot...
+2025-10-19 11:56:35,248 - modules.SessionManager - INFO - ✅ Redis connected
+2025-10-19 11:56:35,248 - __main__ - INFO - ✅ Redis connected
+2025-10-19 11:56:35,249 - __main__ - INFO - ✅ Data provider initialized
+2025-10-19 11:56:35,249 - __main__ - INFO - ✅ All bot components initialized successfully
+2025-10-19 11:56:46,977 - modules.SessionManager - INFO - New session created: 778562716
+2025-10-19 11:56:50,426 - modules.CallbackHandler - INFO - Callback 'help' from user 778562716 in chat 778562716
+2025-10-19 11:57:03,020 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:57:04,613 - modules.CallbackHandler - INFO - Callback 'help' from user 778562716 in chat 778562716
+2025-10-19 11:57:05,440 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:57:06,702 - modules.CallbackHandler - INFO - Callback 'track_by_number' from user 778562716 in chat 778562716
+2025-10-19 11:57:07,876 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:57:08,705 - modules.CallbackHandler - INFO - Callback 'track_by_serial' from user 778562716 in chat 778562716
+2025-10-19 11:57:09,505 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:57:10,327 - modules.CallbackHandler - INFO - Callback 'authenticate' from user 778562716 in chat 778562716
+2025-10-19 11:57:11,346 - modules.CallbackHandler - INFO - Callback 'main_menu' from user 778562716 in chat 778562716
+2025-10-19 11:59:26,504 - modules.CallbackHandler - INFO - Callback 'authenticate' from user 778562716 in chat 778562716
+2025-10-19 11:59:29,365 - modules.MessageHandler - ERROR - Error in handle_nationalId: string index out of range
+2025-10-19 11:59:42,463 - modules.CallbackHandler - INFO - Callback 'track_by_number' from user 778562716 in chat 778562716
+2025-10-19 11:59:45,811 - modules.DataProvider - INFO - Fetching order 123456 from API
+2025-10-19 11:59:46,254 - modules.MessageHandler - ERROR - Order lookup error: 'dict' object has no attribute 'steps'
+2025-10-19 12:00:03,422 - modules.CallbackHandler - INFO - Callback 'track_by_serial' from user 778562716 in chat 778562716
+2025-10-19 12:00:20,191 - modules.DataProvider - INFO - Fetching serial 01HEC2345678 from API
+2025-10-19 12:00:20,421 - modules.MessageHandler - ERROR - Order lookup error: 'dict' object has no attribute 'steps'
+2025-10-19 13:07:36,505 - modules.SessionManager - INFO - Redis disconnected
+2025-10-19 13:07:36,507 - __main__ - INFO - ✅ Cleanup completed
+2025-10-19 13:07:36,508 - __main__ - INFO - 🔚 Bot stopped

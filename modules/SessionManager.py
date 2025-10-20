@@ -1,5 +1,5 @@
 """
-Redis Session Manager - Handling Sessions (Data , Create , Rate Limit and etc) and Backgroind Tasks
+Redis Session Manager - Handling Sessions (Data, Create, Rate Limit and etc) and Background Tasks
 """
 import json
 import asyncio
@@ -14,48 +14,55 @@ from .CoreConfig import UserState, BotConfig, BotMetrics
 
 logger = logging.getLogger(__name__)
 
-# =====================================================
-# Session Data Model
-# =====================================================
+
 @dataclass
 class SessionData:
     """Minimal session data structure"""
-    chat_id: int
+    user_id: int
+    chat_id: Optional[int] = None
     state: UserState = UserState.IDLE
     created_at: datetime = field(default_factory=datetime.now)
     expires_at: datetime = field(default_factory=lambda: datetime.now() + timedelta(minutes=30))
     
     is_authenticated: bool = False
-    national_id: Optional[str] = None
+    nationalId: Optional[str] = None
     user_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    city: Optional[str] = None
     
     temp_data: Dict[str, Any] = field(default_factory=dict)
-
+   
     last_activity: datetime = field(default_factory=datetime.now)
     request_count: int = 0
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary for Redis storage"""
         data = asdict(self)
-        # Convert datetime to ISO format
         for key in ['created_at', 'expires_at', 'last_activity']:
             if data[key]:
                 data[key] = data[key].isoformat()
-        # Convert enum to value
         data['state'] = self.state.value
         return data
     
     @classmethod
     def from_dict(cls, data: Dict) -> 'SessionData':
         """Create instance from dictionary"""
-        # Convert ISO strings to datetime
+        session_data = data.copy()
+        
         for key in ['created_at', 'expires_at', 'last_activity']:
-            if data.get(key):
-                data[key] = datetime.fromisoformat(data[key])
-        # Convert state string to enum
-        if 'state' in data:
-            data['state'] = UserState(data['state'])
-        return cls(**data)
+            if session_data.get(key):
+                session_data[key] = datetime.fromisoformat(session_data[key])
+        
+        if 'state' in session_data:
+            try:
+                session_data['state'] = UserState(session_data['state'])
+            except ValueError:
+                session_data['state'] = UserState.IDLE 
+
+        session_data.setdefault('temp_data', {})
+        session_data.setdefault('request_count', 0)
+        
+        return cls(**session_data)
     
     def is_expired(self) -> bool:
         """Check if session expired"""
@@ -66,9 +73,7 @@ class SessionData:
         self.expires_at = datetime.now() + timedelta(minutes=minutes)
         self.last_activity = datetime.now()
 
-# =====================================================
-# Redis Session Manager
-# =====================================================
+
 class RedisSessionManager:
     """Minimal async Redis session manager"""
     
@@ -79,12 +84,9 @@ class RedisSessionManager:
         self.pool: Optional[aioredis.ConnectionPool] = None
         self._local_cache: Dict[int, SessionData] = {}
         self._lock = asyncio.Lock()
-        self._pool = None
-
         # Redis key prefixes
         self.KEY_PREFIX = "bot:session:"
         self.AUTH_PREFIX = "bot:auth:"
-        
         # TTL configuration
         self.DEFAULT_TTL = 1800  # 30 minutes
         self.AUTH_TTL = 3600     # 60 minutes
@@ -92,12 +94,8 @@ class RedisSessionManager:
         
     async def connect(self):
         """Connect to Redis with proper connection pooling"""
-        max_retries = 3
-        retry_delay = 1
-        
-        for attempt in range(max_retries):
+        for attempt in range(3):
             try:
-                # create separated connection pool
                 self.pool = aioredis.ConnectionPool.from_url(
                     self.config.redis_url,
                     decode_responses=True,
@@ -113,107 +111,96 @@ class RedisSessionManager:
                 logger.info("✅ Redis connected")
                 return
             except Exception as e:
-                if attempt == max_retries - 1:
+                if attempt == 2:  # Last attempt
                     logger.error(f"❌ Redis connection failed: {e}")
                     raise
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 2
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff inline
 
     
     async def disconnect(self):
         """Safely disconnect from Redis"""
         try:
-            # Close Redis connection if exists
             if self.redis:
-                try:
-                    # Don't wait for pool operations if event loop is closing
-                    await asyncio.wait_for(self.redis.close(), timeout=1.0)
-                except (asyncio.TimeoutError, RuntimeError) as e:
-                    logger.debug(f"Redis close timeout/error (expected during shutdown): {e}")
-                finally:
-                    self.redis = None
+                # Use aclose() instead of close() for redis-py 5.0+
+                if hasattr(self.redis, 'aclose'):
+                    await self.redis.aclose()
+                else:
+                    await self.redis.close()  # Fallback for older versions
+                self.redis = None
             
-            # Close pool if exists
-            if self._pool:
-                try:
-                    # Use wait_closed=False to avoid event loop issues
-                    await asyncio.wait_for(self._pool.disconnect(inuse_connections=True), timeout=1.0)
-                except (asyncio.TimeoutError, RuntimeError, AttributeError) as e:
-                    logger.debug(f"Pool disconnect timeout/error (expected during shutdown): {e}")
-                finally:
-                    self._pool = None
-                    
-            logger.info("Redis disconnected cleanly")
-            
+            if self.pool:
+                await self.pool.disconnect()
+                self.pool = None
+                
+            logger.info("Redis disconnected")
         except Exception as e:
-            # During shutdown, some errors are expected
-            if "Event loop is closed" not in str(e):
-                logger.error(f"Unexpected error during disconnect: {e}")
-            else:
-                logger.debug("Event loop closed during disconnect (normal during shutdown)")
+            logger.debug(f"Disconnect error (expected during shutdown): {e}")
 
-
-    
     @asynccontextmanager
-    async def session(self, chat_id: int):
+    async def session(self, chat_id: int, user_id: Optional[int] = None):
         """Session context manager"""
         if not self.redis:
             logger.error("Redis not connected")
-            
-        session = await self.get_or_create(chat_id)
+            yield None
+            return
+        
+        session = await self.get_or_create(chat_id, user_id)
         try:
             yield session
         finally:
             if session:
                 await self.save(session)
-    
 
-    async def get_or_create(self, chat_id: int) -> SessionData:
+    async def get_or_create(self, chat_id: int, user_id: Optional[int] = None) -> SessionData:
         """Get existing or create new session"""
         if not self.redis:
             logger.error("Redis not connected")
+            return None
 
         # Check local cache
         if chat_id in self._local_cache:
             session = self._local_cache[chat_id]
             if not session.is_expired():
+                if user_id and not session.user_id:
+                    session.user_id = user_id
                 self.metrics.cache_hits += 1
                 return session
             else:
                 del self._local_cache[chat_id]
-        
+
         self.metrics.cache_misses += 1
-        
+
         # Check Redis
         key = f"{self.KEY_PREFIX}{chat_id}"
         data = await self.redis.get(key)
-        
+
         if data:
             try:
                 session = SessionData.from_dict(json.loads(data))
                 if not session.is_expired():
+                    if user_id and not session.user_id:
+                        session.user_id = user_id
                     self._local_cache[chat_id] = session
                     return session
             except Exception as e:
                 logger.error(f"Session decode error: {e}")
-        
-        # Create new session
-        session = SessionData(chat_id=chat_id)
+
+        # Create new session - chat_id is primary, user_id is secondary
+        session = SessionData(user_id=user_id or chat_id, chat_id=chat_id)
         await self.save(session)
-        
+
         self.metrics.total_sessions += 1
         self.metrics.active_sessions = len(self._local_cache)
-        
-        logger.info(f"New session created: {chat_id}")
+
+        logger.info(f"New session created: chat_id={chat_id}, user_id={user_id or 'same as chat_id'}")
         return session
-    
+
     async def save(self, session: SessionData):
         """Save session to Redis"""
         try:
             session.last_activity = datetime.now()
             session.request_count += 1
-            
-            # Determine TTL
+
             ttl = self.AUTH_TTL if session.is_authenticated else self.DEFAULT_TTL
             
             # Save to Redis
@@ -223,8 +210,6 @@ class RedisSessionManager:
                 ttl, 
                 json.dumps(session.to_dict())
             )
-            
-            # Update local cache
             self._local_cache[session.chat_id] = session
             
             # Cleanup cache if too large
@@ -233,66 +218,7 @@ class RedisSessionManager:
                 
         except Exception as e:
             logger.error(f"Save error: {e}")
-    
-    async def _cleanup_cache(self):
-        """Clean up local cache"""
-        async with self._lock:
-            expired = [
-                k for k, v in self._local_cache.items() 
-                if v.is_expired()
-            ]
-            for k in expired[:250]: 
-                del self._local_cache[k]
-            
-            self.metrics.active_sessions = len(self._local_cache)
-    
-    async def update_state(self, chat_id: int, new_state: UserState, **kwargs):
-        """Update session state"""
-        async with self.session(chat_id) as session:
-            old_state = session.state
-            session.state = new_state
-            session.extend()
-            
-            if kwargs:
-                session.temp_data.update(kwargs)
-            
-            logger.info(f"State changed: {chat_id} {old_state.name} -> {new_state.name}")
-            return session
-    
-    async def authenticate(self, chat_id: int, national_id: str, name: str):
-        """Authenticate user"""
-        async with self.session(chat_id) as session:
-            session.is_authenticated = True
-            session.national_id = national_id
-            session.user_name = name
-            session.state = UserState.AUTHENTICATED
-            session.extend(60)
-            
-            auth_key = f"{self.AUTH_PREFIX}{national_id}"
-            await self.redis.setex(auth_key, self.AUTH_TTL, chat_id)
-            
-            self.metrics.authenticated_users += 1
-            logger.info(f"User authenticated: {chat_id} - {name}")
-            return session
-    
-    async def logout(self, chat_id: int):
-        """Logout user"""
-        async with self.session(chat_id) as session:
-            if session.national_id:
-                auth_key = f"{self.AUTH_PREFIX}{session.national_id}"
-                await self.redis.delete(auth_key)
-            
-            session.is_authenticated = False
-            session.national_id = None
-            session.user_name = None
-            session.state = UserState.IDLE
-            session.temp_data.clear()
-            
-            if self.metrics.authenticated_users > 0:
-                self.metrics.authenticated_users -= 1
-            
-            logger.info(f"User logged out: {chat_id}")
-    
+
     async def clear(self, chat_id: int):
         """Clear session completely"""
         try:
@@ -311,16 +237,166 @@ class RedisSessionManager:
         except Exception as e:
             logger.error(f"Error clearing session {chat_id}: {e}")
 
+    async def _cleanup_cache(self):
+        """Clean up local cache - remove expired and limit size"""
+        async with self._lock:
+            expired_keys = []
+            
+            for chat_id, session in list(self._local_cache.items()):
+                if session.is_expired():
+                    expired_keys.append(chat_id)
+            
+            for chat_id in expired_keys[:len(expired_keys) // 2]:  # Remove half to avoid blocking
+                try:
+                    del self._local_cache[chat_id]
+                    # Also clean from Redis if still there
+                    redis_key = f"{self.KEY_PREFIX}{chat_id}"
+                    await self.redis.delete(redis_key)
+                except Exception:
+                    pass
+            
+            # Limit cache size if still too large
+            if len(self._local_cache) > self.MAX_CACHE_SIZE:
+                # Remove oldest sessions (by created_at)
+                sorted_sessions = sorted(
+                    self._local_cache.items(), 
+                    key=lambda x: x[1].created_at
+                )
+                to_remove = len(sorted_sessions) - self.MAX_CACHE_SIZE // 2  # Keep half capacity
+                
+                for chat_id, _ in sorted_sessions[:to_remove]:
+                    try:
+                        del self._local_cache[chat_id]
+                    except KeyError:
+                        pass
+            
+            self.metrics.active_sessions = len(self._local_cache)
+            logger.debug(f"Cache cleaned: {len(self._local_cache)} active sessions")
+
     
+    async def update_state(self, chat_id: int, new_state: UserState, **kwargs): 
+        """Update session state"""
+        async with self.session(chat_id) as session:
+            old_state = session.state
+            session.state = new_state
+            session.extend()
+            
+            if kwargs:
+                session.temp_data.update(kwargs)
+            
+            logger.info(f"State changed: chat_id={chat_id} {old_state.name} -> {new_state.name}")
+            return session
+    
+    async def authenticate(self, chat_id: int, user_id: int, nationalId: str, name: str):
+        """Authenticate user"""
+        async with self.session(chat_id, user_id) as session:
+            session.is_authenticated = True
+            session.nationalId = nationalId
+            session.user_name = name
+            session.state = UserState.AUTHENTICATED
+            session.extend(60)
+
+            auth_key = f"{self.AUTH_PREFIX}{nationalId}"
+            await self.redis.setex(auth_key, self.AUTH_TTL, chat_id)
+            
+            self.metrics.authenticated_users += 1
+            logger.info(f"User authenticated: chat_id={chat_id}, user_id={user_id}, name={name}")
+            return session
+    
+    async def logout(self, chat_id: int):
+        """Logout user"""
+        async with self.session(chat_id) as session:
+            if session.nationalId:
+                auth_key = f"{self.AUTH_PREFIX}{session.nationalId}"
+                await self.redis.delete(auth_key)
+            
+            session.is_authenticated = False
+            session.nationalId = None
+            session.user_name = None
+            session.state = UserState.IDLE
+            session.temp_data.clear()
+            
+            if self.metrics.authenticated_users > 0:
+                self.metrics.authenticated_users -= 1
+            
+            logger.info(f"User logged out: chat_id={chat_id}")
+    
+    async def get_user_by_nationalId(self, nationalId: str) -> Optional[int]:
+        """Get chat_id by national ID"""
+        if not self.redis:
+            return None
+        auth_key = f"{self.AUTH_PREFIX}{nationalId}"
+        chat_id = await self.redis.get(auth_key)
+        return int(chat_id) if chat_id else None
+    
+    async def is_rate_limited(self, chat_id: int) -> bool:
+        """Check if user is rate limited"""
+        session = await self.get_or_create(chat_id)
+        if not session:
+            return False
+               
+        max_requests = getattr(self.config, 'max_requests_per_hour', 100)
+
+        if session.request_count > max_requests:
+            session.state = UserState.RATE_LIMITED
+            session.temp_data['rate_limit_expires'] = (
+                datetime.now() + timedelta(hours=1)
+            ).timestamp()
+            await self.save(session)
+            return True
+        
+        return False
+    
+    async def get_active_sessions(self) -> List[SessionData]:
+        """Get all active sessions from cache and Redis"""
+        active_sessions = []
+        
+        for chat_id, session in self._local_cache.items():
+            if not session.is_expired():
+                active_sessions.append(session)
+        
+        if self.redis:
+            cursor = '0'
+            while cursor != 0:
+                cursor, keys = await self.redis.scan(
+                    cursor=cursor,
+                    match=f"{self.KEY_PREFIX}*",
+                    count=50  # Smaller batch for performance
+                )
+                
+                for key in keys:
+                    chat_id = int(key.replace(f"{self.KEY_PREFIX}", ""))
+                    if chat_id not in self._local_cache:  # Skip cached
+                        try:
+                            data = await self.redis.get(key)
+                            if data:
+                                session = SessionData.from_dict(json.loads(data))
+                                if not session.is_expired():
+                                    active_sessions.append(session)
+                        except Exception:
+                            continue
+        
+        return active_sessions
+
+
     async def get_stats(self) -> Dict:
         """Get session statistics"""
+        if not self.redis:
+            return {
+                'total_sessions': 0,
+                'authenticated_sessions': 0,
+                'cached_sessions': len(self._local_cache),
+                'cache_hit_rate': 0.0,
+                'total_requests': self.metrics.total_requests
+            }
+
         cursor = '0'
         total = 0
         authenticated = 0
         
         while cursor != 0:
             cursor, keys = await self.redis.scan(
-                cursor,
+                cursor=cursor,
                 match=f"{self.KEY_PREFIX}*",
                 count=100
             )
@@ -331,27 +407,33 @@ class RedisSessionManager:
                     data = await self.redis.get(key)
                     if data:
                         session_dict = json.loads(data)
-                        if session_dict.get('is_authenticated'):
+                        if session_dict.get('is_authenticated', False):
                             authenticated += 1
-                except:
-                    pass
+                except Exception:
+                    continue
+        
+        cache_ratio = (self.metrics.cache_hits / 
+                    max(self.metrics.cache_hits + self.metrics.cache_misses, 1))
         
         return {
             'total_sessions': total,
             'authenticated_sessions': authenticated,
             'cached_sessions': len(self._local_cache),
-            'cache_hit_rate': self.metrics.cache_hits / max(self.metrics.cache_hits + self.metrics.cache_misses, 1),
+            'cache_hit_rate': cache_ratio,
             'total_requests': self.metrics.total_requests
         }
-    
+
     async def cleanup_expired(self):
         """Clean up expired sessions from Redis"""
+        if not self.redis:
+            return 0
+        
         cursor = '0'
         deleted = 0
         
         while cursor != 0:
             cursor, keys = await self.redis.scan(
-                cursor,
+                cursor=cursor,
                 match=f"{self.KEY_PREFIX}*",
                 count=100
             )
@@ -361,46 +443,19 @@ class RedisSessionManager:
                     data = await self.redis.get(key)
                     if data:
                         session_dict = json.loads(data)
-                        expires_at = datetime.fromisoformat(session_dict.get('expires_at'))
-                        if datetime.now() > expires_at:
-                            await self.redis.delete(key)
-                            deleted += 1
-                except:
-                    pass
+                        expires_at_str = session_dict.get('expires_at')
+                        if expires_at_str:
+                            expires_at = datetime.fromisoformat(expires_at_str)
+                            if datetime.now() > expires_at:
+                                await self.redis.delete(key)
+                                deleted += 1
+                except Exception:
+                    continue
         
         logger.info(f"Cleaned up {deleted} expired sessions")
         return deleted
-    
-    async def get_user_by_national_id(self, national_id: str) -> Optional[int]:
-        """Get chat_id by national ID"""
-        auth_key = f"{self.AUTH_PREFIX}{national_id}"
-        chat_id = await self.redis.get(auth_key)
-        return int(chat_id) if chat_id else None
-    
-    async def is_rate_limited(self, chat_id: int) -> bool:
-        """Check if user is rate limited"""
-        session = await self.get_or_create(chat_id)
-        
-        if session.request_count > self.config.max_requests_hour:
-            session.state = UserState.RATE_LIMITED
-            await self.save(session)
-            return True
-        
-        return False
-    
-    async def get_active_sessions(self) -> List[SessionData]:
-        """Get all active sessions"""
-        active_sessions = []
-        
-        for session in self._local_cache.values():
-            if not session.is_expired():
-                active_sessions.append(session)
-        
-        return active_sessions
 
-# =====================================================
-# Factory & Background Tasks
-# =====================================================
+
 class SessionBackgroundTasks:
     """Background tasks for session management"""
     
@@ -430,15 +485,19 @@ class SessionBackgroundTasks:
         """Periodic cleanup task"""
         while self.running:
             try:
-                await asyncio.sleep(1800) 
-                await self.manager.cleanup_expired()
-                await self.manager._cleanup_cache()
+                await asyncio.sleep(1800)  # 30 minutes
+                if self.manager.redis:
+                    deleted = await self.manager.cleanup_expired()
+                    await self.manager._cleanup_cache()
+                    logger.debug(f"Background cleanup: deleted {deleted} expired sessions")
+            except asyncio.CancelledError:
+                logger.debug("Cleanup loop cancelled")
+                break
             except Exception as e:
-                logger.error(f"Cleanup error: {e}")
+                logger.error(f"Cleanup loop error: {e}", exc_info=True)
+                await asyncio.sleep(60)  # Wait before retry on error
 
-# =====================================================
-# Create Session and Start Background Tasks
-# =====================================================
+
 async def create_session_manager(config: BotConfig, metrics: BotMetrics) -> RedisSessionManager:
     """Factory to create and initialize session manager"""
     manager = RedisSessionManager(config, metrics)
@@ -448,104 +507,29 @@ async def create_session_manager(config: BotConfig, metrics: BotMetrics) -> Redi
     await tasks.start()
     manager.background_tasks = tasks
     
+    # Test connection
+    test_session = await manager.get_or_create(999999) # Dummy chat_id
+    if test_session:
+        await manager.save(test_session)
+        logger.info("✅ Session manager initialized successfully")
+    else:
+        logger.error("❌ Session manager initialization failed")
+    
     return manager
 
-# =====================================================
-# Helper Functions
-# =====================================================
+
+
 def format_session_info(session: SessionData) -> str:
     """Format session info for display"""
     info = f"""
 📊 Session Info:
-• Chat ID: {session.chat_id}
+• User ID: {session.user_id}
+• Chat ID: {session.chat_id or 'N/A'}
 • State: {session.state.name}
 • Authenticated: {'✅' if session.is_authenticated else '❌'}
 • User: {session.user_name or 'N/A'}
+• National ID: {session.nationalId or 'N/A'}
 • Requests: {session.request_count}
 • Expires: {session.expires_at.strftime('%Y-%m-%d %H:%M')}
     """
     return info.strip()
-
-# =====================================================
-# Module Exports
-# =====================================================
-__all__ = [
-    'RedisSessionManager',
-    'SessionData',
-    'SessionBackgroundTasks',
-    'create_session_manager',
-    'format_session_info'
-]
-
-# =====================================================
-# Testing
-# =====================================================
-if __name__ == "__main__":
-    async def test():
-        """Test session manager"""
-        from CoreConfig import initialize_core
-        
-        # Initialize
-        config, validators, metrics = initialize_core()
-        
-        # Create manager
-        manager = await create_session_manager(config, metrics)
-        
-        # Test operations
-        test_chat_id = 123456789
-        
-        # Create session
-        session = await manager.get_or_create(test_chat_id)
-        print(f"✅ Session created: {session.chat_id}")
-        
-        # Test authentication
-        await manager.authenticate(
-            test_chat_id, 
-            "1234567890", 
-            "تست کاربر"
-        )
-        print("✅ User authenticated")
-        
-        # Test state change
-        await manager.update_state(
-            test_chat_id,
-            UserState.WAITING_ORDER_NUMBER,
-            order_type="repair"
-        )
-        print("✅ State updated")
-        
-        # Test stats
-        stats = await manager.get_stats()
-        print(f"📊 Stats: {stats}")
-        
-        # Test session info
-        session = await manager.get_or_create(test_chat_id)
-        info = format_session_info(session)
-        print(f"📋 Session Info:\n{info}")
-        
-        # Test logout
-        await manager.logout(test_chat_id)
-        print("✅ User logged out")
-        
-        # Test cleanup
-        deleted = await manager.cleanup_expired()
-        print(f"🧹 Cleaned up {deleted} expired sessions")
-        
-        # Test rate limiting
-        is_limited = await manager.is_rate_limited(test_chat_id)
-        print(f"⚠️ Rate limited: {is_limited}")
-        
-        # Clear session
-        await manager.clear(test_chat_id)
-        print("✅ Session cleared")
-        
-        # Stop background tasks
-        await manager.background_tasks.stop()
-        
-        # Disconnect
-        await manager.disconnect()
-        print("✅ All tests passed!")
-    
-    # Run test
-    import asyncio
-    asyncio.run(test())

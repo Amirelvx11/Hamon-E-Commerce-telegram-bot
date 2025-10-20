@@ -5,58 +5,37 @@ import os
 import logging
 import re
 from enum import Enum, auto
+from telegram import (ReplyKeyboardMarkup,
+ KeyboardButton, InlineKeyboardMarkup,
+ InlineKeyboardButton
+)
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from dotenv import load_dotenv
 
-# Logging setup
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+load_dotenv()
 logger = logging.getLogger(__name__)
 
-load_dotenv()
 
-# =====================================================
-# Core Enums
-# =====================================================
 class UserState(Enum):
-    """User state machine"""
     IDLE = auto()
-    WAITING_NATIONAL_ID = auto()
+    WAITING_nationalId = auto()
     AUTHENTICATED = auto()
     WAITING_ORDER_NUMBER = auto()
     WAITING_SERIAL = auto()
     WAITING_COMPLAINT_TEXT = auto()
-    WAITING_RATING_SCORE = auto()
-    WAITING_RATING_TEXT = auto()
+    WAITING_COMPLAINT_TYPE = auto()
     WAITING_REPAIR_DESC = auto()
     RATE_LIMITED = auto()
 
-class OrderStatus(Enum):
-    """Order workflow stages"""
-    WAREHOUSE_RECEIPT = 0
-    PRE_RECEPTION = 1
-    RECEPTION = 2
-    IN_REPAIR = 3
-    INVOICING = 4
-    FINANCIAL = 5
-    EXIT_PERMIT = 6
-    SHIPPED = 7
-    COMPLETED = 8
-
 class ComplaintType(Enum):
-    """Complaint categories"""
     TECHNICAL = "technical"
     PAYMENT = "payment"
     SHIPPING = "shipping"
     SERVICE = "service"
     OTHER = "other"
 
-# =====================================================
-# Callback Format Constants
-# =====================================================
+
 class CallbackFormats:
     """Standardized callback data formats for consistency"""
     
@@ -80,20 +59,20 @@ class CallbackFormats:
     # Services
     REPAIR_REQUEST = "repair_request"
     SUBMIT_COMPLAINT = "submit_complaint"
-    RATE_SERVICE = "rate_service"
-    
+
+    # Info pages
+    CONTACT_INFO = "contact_info"
+    HELP = "help"
+
     # Dynamic formats (with placeholders)
     ORDER_DETAILS = "order_{}"
     REFRESH_ORDER = "refresh_order:{}"
     DOWNLOAD_REPORT = "download_report:{}"
     DEVICES = "devices_{}"
-    DEVICE_PAGE = "page_{}_{}" 
+    PAGE_DEVICES = "page_{}_devices_{}" 
+    MY_ORDERS_PAGE = "my_orders_page_{}"
     COMPLAINT_TYPE = "complaint_{}"
-    RATING_SCORE = "rating_{}"
-    
-    # Info pages
-    CONTACT_INFO = "contact_info"
-    HELP = "help"
+    NOOP = "noop"  # For non-clickable buttons
     
     @staticmethod
     def parse_callback(callback_data: str) -> tuple:
@@ -106,41 +85,59 @@ class CallbackFormats:
             return parts[0], parts[1] if len(parts) > 1 else None
         return callback_data, None
 
-# =====================================================
-# Workflow Configuration
-# =====================================================
+
 WORKFLOW_STEPS = {
-    0: "ثبت اولیه",
-    1: "پذیرش",
-    2: "بررسی فنی",
-    3: "در حال تعمیر",
-    4: "صدور صورتحساب",
-    5: "پرداخت",
-    6: "آماده ارسال",
-    7: "ارسال شده",
-    8: "تحویل داده شده"
-}
-
-STEP_PROGRESS = {
-    0: 0, 1: 12.5, 2: 25, 3: 37.5, 4: 50,
-    5: 62.5, 6: 75, 7: 87.5, 8: 100
-}
-
-STEP_ICONS = {
-    0: "📝", 1: "✅", 2: "🔍", 3: "🔧",
-    4: "📄", 5: "💳", 6: "📦", 7: "🚚", 8: "✔️"
-}
-
-STATUS_TEXT = {
-    0: "رسید انبار",
+    0: "ورود مرسوله",
     1: "پیش پذیرش",
     2: "پذیرش",
     3: "تعمیرات",
     4: "صدور صورتحساب",
-    5: "مالی",
-    6: "صدور مجوز خروج کالا",
+    5: "خزانه داری",
+    6: "خروج کالا",
     7: "ارسال",
-    8: "پایان"
+    8: "تکمیل اطلاعات",
+    9: "منتظر پرداخت",
+    10: "راکد",
+    50: "پایان عملیات"
+}
+
+STEP_PROGRESS = {
+    0: 0,    # ورود مرسوله
+    1: 10,   # پیش پذیرش
+    2: 20,   # پذیرش
+    3: 35,   # تعمیرات
+    4: 50,   # صدور صورتحساب
+    5: 60,   # خزانه داری
+    6: 70,   # خروج کالا
+    7: 80,   # ارسال
+    8: 85,   # تکمیل اطلاعات
+    9: 90,   # منتظر پرداخت
+    10: 95,  # راکد
+    50: 100  # پایان عملیات
+}
+
+STEP_ICONS = {
+    0: "📥",   # ورود مرسوله
+    1: "📝",   # پیش پذیرش
+    2: "✅",   # پذیرش
+    3: "🔧",   # تعمیرات
+    4: "📄",   # صدور صورتحساب
+    5: "💰",   # خزانه داری
+    6: "📦",   # خروج کالا
+    7: "🚚",   # ارسال
+    8: "📋",   # تکمیل اطلاعات
+    9: "⏳",   # منتظر پرداخت
+    10: "⏸️",  # راکد
+    50: "✔️"   # پایان عملیات
+}
+
+DEVICE_STATUS = {
+    0:"ثبت اولیه",
+    2:"تست اولیه",
+    3:"تعمیرات",
+    4:"تست نهایی",
+    5:"صورتحساب",
+    50:"پایان عملیات"
 }
 
 COMPLAINT_TYPE_MAP = {
@@ -151,52 +148,70 @@ COMPLAINT_TYPE_MAP = {
     ComplaintType.OTHER: "سایر موارد"
 }
 
-# =====================================================
-# Helper Functions
-# =====================================================
-def get_step_display(step: int) -> str:
-    """Get step with icon"""
-    return f"{STEP_ICONS.get(step, '▫️')} {WORKFLOW_STEPS.get(step, 'نامشخص')}"
+STATE_LABELS = {
+    UserState.IDLE: "غیرفعال",
+    UserState.WAITING_nationalId: "در انتظار فعالسازی",
+    UserState.AUTHENTICATED: "فعال",
+}
 
-def calculate_progress(step: int) -> float:
-    """Calculate progress percentage"""
-    return STEP_PROGRESS.get(step, 0)
-
-def generate_progress_bar(progress: float, width: int = 10) -> str:
-    """Generate visual progress bar"""
-    progress = max(0, min(100, progress))
-    filled = int((progress / 100) * width)
-    bar = "█" * filled + "░" * (width - filled)
-    return f"[{bar}] {progress:.1f}%"
-
-def get_status_info(status: int, steps: Optional[int] = None) -> Dict[str, Any]:
-    """Get status information"""
-    step = steps if steps is not None else status
-    progress = calculate_progress(step)
+def get_step_info(step: int) -> Dict[str, Any]:
+    """Get complete step information"""
+    progress = STEP_PROGRESS.get(step, 0)
+    icon = STEP_ICONS.get(step, '📍')
+    text = WORKFLOW_STEPS.get(step, 'نامشخص')
+    filled = int((progress / 100) * 10)
+    bar = "█" * filled + "░" * (10 - filled)
     
     return {
-        'status_text': STATUS_TEXT.get(status, "نامشخص"),
-        'step_text': WORKFLOW_STEPS.get(step, "نامشخص"),
-        'icon': STEP_ICONS.get(step, "📍"),
+        'text': text,
+        'icon': icon, 
         'progress': progress,
-        'progress_bar': generate_progress_bar(progress),
-        'is_completed': status == 8
+        'display': f"{icon} {text}",
+        'bar': bar
     }
 
-# =====================================================
-# Configuration
-# =====================================================
+MAIN_REPLY_KEYBOARD = [
+    [KeyboardButton("🔐 ورود با کد/شناسه ملی"), KeyboardButton("🔢 پیگیری سفارش")],
+    [KeyboardButton("#️⃣ پیگیری سریال"), KeyboardButton("📦 سفارشات من")],
+    [KeyboardButton("❓ راهنما"), KeyboardButton("👤 اطلاعات من")]
+]
+CANCEL_REPLY_KEYBOARD = [[KeyboardButton("❌ انصراف")]]
+
+MAIN_INLINE_KEYBOARD = [
+    [InlineKeyboardButton("🔐 ورود با کد/شناسه ملی", callback_data=CallbackFormats.AUTHENTICATE)],
+    [InlineKeyboardButton("🔢 پیگیری سفارش", callback_data=CallbackFormats.TRACK_BY_NUMBER),
+     InlineKeyboardButton("#️⃣ پیگیری سریال", callback_data=CallbackFormats.TRACK_BY_SERIAL)],
+    [InlineKeyboardButton("❓ راهنما", callback_data=CallbackFormats.HELP)]
+]
+
+REPLY_BUTTON_TO_CALLBACK = {
+    "🔐 ورود با کد/شناسه ملی": CallbackFormats.AUTHENTICATE,
+    "🔢 پیگیری سفارش": CallbackFormats.TRACK_BY_NUMBER,
+    "#️⃣ پیگیری سریال": CallbackFormats.TRACK_BY_SERIAL,
+    "📦 سفارشات من": CallbackFormats.MY_ORDERS,
+    "❓ راهنما": CallbackFormats.HELP,
+    "👤 اطلاعات من": CallbackFormats.MY_INFO,
+    "❌ انصراف": CallbackFormats.CANCEL
+}
+
+def get_step_display(step: int) -> str:
+    """Get step display text with icon"""
+    step_info = get_step_info(step)
+    return step_info['display']
+
 @dataclass
 class BotConfig:
     """Bot configuration"""
     telegram_token: str
     redis_url: str = "redis://localhost:6379/0"
-    redis_password: Optional[str] = None
+    redis_password: str = None
     auth_token: str = ""
     server_urls: Dict[str, str] = field(default_factory=dict)
     maintenance_mode: bool = False
     max_requests_hour: int = 100
     session_timeout: int = 30
+
+    # Constants
     support_phone: str = "03133127"
     website_url: str = "https://hamoonpay.com"
     support_email: str = "support@hamoonpay.com"
@@ -206,21 +221,17 @@ class BotConfig:
         if not self.telegram_token:
             raise ValueError("TELEGRAM_BOT_TOKEN required")
         
-        # Load from environment
-        self.auth_token = os.getenv("AUTH_TOKEN", "")
-        self.support_phone = os.getenv("SUPPORT_PHONE", "03133127")
-        self.website_url = os.getenv("WEBSITE_URL", "https://hamoonpay.com")
+        if not self.auth_token:
+            self.auth_token = os.getenv("AUTH_TOKEN", "")
         
-        # Server URLs
         if not self.server_urls:
             base_url = "http://192.168.41.41:8010/api/v1"
             self.server_urls = {
                 "number": os.getenv("SERVER_URL_NUMBER", f"{base_url}/ass-process/GetByNumber"),
                 "serial": os.getenv("SERVER_URL_SERIAL", f"{base_url}/ass-process/GetBySerial"),
-                "national_id": os.getenv("SERVER_URL_NATIONAL_ID", ""),
-                "user_orders": os.getenv("SERVER_URL_USER_ORDERS", ""),
+                "national_id": os.getenv("SERVER_URL_NATIONAL_ID", f"{base_url}/ass-process/GetByNationalID"),  
+                "user_orders": os.getenv("SERVER_URL_USER_ORDERS", f"{base_url}/ass-process/GetByNationalID"), # Point to same endpoint
                 "submit_complaint": os.getenv("SERVER_URL_COMPLAINT", ""),
-                "submit_rating": os.getenv("SERVER_URL_RATING", ""),
                 "submit_repair": os.getenv("SERVER_URL_REPAIR", ""),
             }
         
@@ -228,9 +239,6 @@ class BotConfig:
         if os.getenv("MAINTENANCE_MODE", "").lower() in ["true", "1", "yes"]:
             self.maintenance_mode = True
 
-# =====================================================
-# Metrics
-# =====================================================
 @dataclass
 class BotMetrics:
     """Metrics tracker"""
@@ -248,59 +256,117 @@ class BotMetrics:
         total = self.cache_hits + self.cache_misses
         return self.cache_hits / total if total > 0 else 0.0
 
-# =====================================================
-# Validators
-# =====================================================
 class Validators:
-    """Input validators"""
+    """Input validators with comprehensive validation and error messages"""
     
     @staticmethod
-    def validate_national_id(nid: str) -> bool:
-        """Validate Iranian national ID"""
-        if not nid or not nid.isdigit() or len(nid) != 10:
-            return False
-        check = sum(int(nid[i]) * (10 - i) for i in range(9)) % 11
-        return check == int(nid[9]) if check < 2 else check == 11 - int(nid[9])
-    
-    @staticmethod
-    def validate_phone(phone: str) -> bool:
-        """Validate phone number"""
-        return bool(re.match(r'^(\+98|0)?9\d{9}$', phone))
-    
-    @staticmethod
-    def validate_order_number(order_num: str) -> bool:
-        """Validate order number"""
-        return bool(order_num and re.match(r'^[A-Z0-9-]+$', order_num, re.I))
+    def validate_nationalId(nid: str) -> Tuple[bool, Optional[str]]:
+        """Validate national ID - supports 10, 11, or 12 digits"""
+        if not nid:
+            return False, "کد ملی نمی‌تواند خالی باشد"
+        nid = nid.strip()
+        if not nid.isdigit():
+            return False, "کد/شناسه ملی باید فقط شامل ارقام باشد"
+        if len(nid) < 10 or len(nid) > 12:
+            return False, "کد/شناسه ملی باید 10 تا 12 رقم باشد"
+        if len(nid) == 10:
+            try:
+                check = sum(int(nid[i]) * (10 - i) for i in range(9)) % 11
+                if check < 2:
+                    valid = int(nid[9]) == check
+                else:
+                    valid = int(nid[9]) == 11 - check
+                return valid, None if valid else "کد ملی نامعتبر است (چک‌سم نامعتبر)"
+            except (ValueError, IndexError):
+                return False, "فرمت کد ملی نامعتبر است"     
+        # For 11-12 digits, just check it's all digits (already done above)
+        return True, None
 
-# =====================================================
-# Message Templates
-# =====================================================
+    
+    @staticmethod
+    def validate_phone(phone: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validate phone number
+        Accepts 10-12 digits (Iranian mobile numbers)
+        """
+        cleaned = re.sub(r'[+\s\-\(\)]', '', phone)
+        
+        if not cleaned or not cleaned.isdigit() or len(cleaned) != 11:
+            return False, "شماره تلفن نامعتبر است"
+        
+        # Check if it starts with valid Iranian mobile prefix (09)
+        if len(cleaned) >= 11 and not cleaned.startswith('09'):
+            return False, "شماره تلفن باید با 09 شروع شود"
+        
+        return True, None
+    
+    @staticmethod
+    def validate_order_number(order_num: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validate order number
+        Accepts 3-10 digits
+        """
+        if not order_num:
+            return False, "شماره سفارش نمی‌تواند خالی باشد"
+        cleaned = order_num.strip()
+        if not cleaned.isdigit() or len(cleaned) < 3 or len(cleaned) > 10:
+            return False, "❌ فرمت شماره سفارش نادرست است" 
+        return True, None
+    
+    @staticmethod
+    def validate_serial(serial: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validate serial number
+        Accepts full serial (like 00HEC123456) or last 6 digits (123456)
+        """
+        if not serial:
+            return False, "سریال نامعتبر است"
+        
+        cleaned = re.sub(r'[ \-\_]', '', serial.upper())
+        
+        full_pattern = re.match(r'^[A-Z0-9]{10,12}$', cleaned)
+        if full_pattern:
+            return True, None
+
+        if re.match(r'^\d{6}$', cleaned):
+            return True, None
+        
+        return False, "فرمت سریال نامعتبر است.لطفا 6 رقم آخر سریال خود یا سریال کامل را وارد کنید ❌"
+    
+    @staticmethod
+    def validate_text_length(text: str, min_length: int = 10, max_length: int = 1000) -> Tuple[bool, Optional[str]]:
+        """
+        Validate text length for complaints and descriptions
+        """
+        if not text or len(text.strip()) < min_length:
+            return False, f"متن باید حداقل {min_length} کاراکتر باشد"
+        
+        if len(text.strip()) > max_length:
+            return False, f"متن نباید بیش از {max_length} کاراکتر باشد"
+        
+        return True, None
+    
+    @staticmethod
+    def validate_complaint_type(complaint_type: str) -> bool:
+        """
+        Validate complaint type against allowed types
+        """
+        from .CoreConfig import ComplaintType
+        valid_types = [t.value for t in ComplaintType]
+        return complaint_type in valid_types
+
 MESSAGES = {
     'welcome': """🌟 سلام! خوش اومدی به ربات پشتیبانی تجارت الکترونیک هامون  
-   🤖 😃من دستیار هوشمندت هستم و اینجا هستم تا بهت کمک کنم   
+   🤖 من دستیار هوشمندت هستم و اینجام تا بهت کمک کنم   
 
   در موارد زیر راهنماییت میکنم:
     -🛒 ثبت سفارش  
     -🛍️ پیگیری سفارش  
     -🔧 پیگیری یا ثبت تعمیرات
     -💬 ثبت نظر یا شکایت  
-    -⭐ امتیازدهی به خدمات  
 
     میتونی از منوی زیر وارد پنل خودت بشی 👇""",
 
-
-    'maintenance': "🔧 سیستم در حال به‌روزرسانی\n\n☎️ پشتیبانی: {support_phone}",
-    
-    'rate_limited': "⚠️ محدودیت درخواست\n\nلطفا {minutes} دقیقه صبر کنید.",
-    
-    'auth_request': "🔐 لطفا کد ملی خود را وارد کنید:",
-    
-    'auth_success': "✅ احراز هویت موفق\n\nخوش آمدید {name} عزیز!",
-    
-    'auth_failed': "❌ کد ملی یافت نشد",
-    
-    'order_not_found': "❌ سفارش یافت نشد\n\nلطفا شماره را بررسی کنید.",
-    
     'order_details': """📦 جزئیات سفارش
 
 🔢 شماره: {order_number}
@@ -314,40 +380,37 @@ MESSAGES = {
 
 {additional_info}""",
 
-'help': """📚 **راهنمای کامل ربات پشتیبانی**
+'help': """📚 راهنمای کامل ربات پشتیبانی
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔹 **چطور شروع کنم؟**
+🔹 چطور شروع کنم؟
 
-1️⃣ **ورود به سیستم**
-   کافیه کد ملی خودتون رو وارد کنید 🆔
-   - مثال: `1234567890`
-   - ✅ بعد از ورود، به تمام امکانات دسترسی دارید
-2️⃣ **پیگیری سفارش**
+1️⃣ ورود به سیستم
+   کافیه کد/شناسه ملی خودتون رو وارد کنید 🆔 
+   - بعد از ورود، به تمام امکانات دسترسی دارید ✅
+2️⃣ پیگیری سفارش
    دو روش دارید:
-   - شماره پذیرش (مثل: 72113)  🔢
-   - سریال دستگاه (مثل: ABC123456) #️⃣
+   - شماره پذیرش ( 0123456 )  🔢
+   - سریال دستگاه ( 01HEC2345678 ) #️⃣
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 **امکانات ویژه برای شما**
+🎯 امکانات ویژه برای شما
 
 بعد از ورود می‌تونید:
 
-📦 **سفارشات من**
+📦 سفارشات من
 -   مشاهده همه سفارشات فعال و گذشته(در دست تعمیر یا ارسال)
-🔧 **درخواست تعمیر**
+🔧 درخواست تعمیر
 -   ثبت درخواست تعمیرات  برای دستگاه جدید
-🛒 **ثبت سفارش**
+🛒 ثبت سفارش
 -   ثبت سفارش از طریق ربات و مشاهده دستگاه‌ها در سایت شرکت هامون    
-⭐ **امتیازدهی**
--   نظرتون برای ما مهمه! به خدمات ما امتیاز بدید
-💬 **ثبت شکایات**
+💬 ثبت شکایات
 -   ثبت شکایت یا پیشنهاد به صورت فوری
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-💡 **نکات مفید**
+💡 نکات مفید
 
-• ⏰ جلسه شما بعد از 30 دقیقه بدون فعالیت بسته میشه
+• ⏰ جلسه و فعالیت شما بعد از 30 دقیقه بدون فعالیت بسته میشه
    برای
 - انصراف از هر عملیات /cancel 🔄
 - برگشت به منو اصلی /menu 🏠
@@ -355,70 +418,80 @@ MESSAGES = {
    رو بزنید. ✅
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-❓ **سوالات متداول**
+❓ سوالات متداول
 
-**🤔 کد ملیم رو فراموش کردم**
+🤔 کد/شناسه ملیم رو فراموش کردم یا به شماره همراه ثبت شده دسترسی ندارم
 ↳ از طریق شماره پذیرش یا سریال از وضعیت دستگاه خود اطلاع پیدا کنید.
 
-**🤔 شماره پذیرشم رو گم کردم**
+🤔 شماره پذیرشم رو گم کردم
 ↳ با سریال دستگاه پیگیری کنید.
 
-**🤔 چطور شکایت ثبت کنم؟**
-↳ از منو گزینه "ثبت شکایت" رو انتخاب کنید(ابتدا باید از طریق کد ملی خود وارد سیستم شوید)
+🤔 چطور شکایت یا نظراتم رو ثبت کنم؟
+↳ از منو گزینه "ثبت شکایت" رو انتخاب کنید(ابتدا باید از طریق کد/شناسه ملی خود وارد سیستم شوید)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-📞 **ارتباط با ما**
+📞 ارتباط با ما
 
 در کنار شما هستیم. 🤝
-📍 آدرس: اصفهان، خیابان توحید میانی، بعد از بانک پارسیان، بیین کوچه 14 و 12 ساختمان آریا طبقه دوم واحد 201
+📍 آدرس: اصفهان، خیابان توحید میانی، بعد از بانک پارسیان، بین کوچه 14 و 12 ساختمان آریا طبقه دوم واحد 201
 🕐 ساعات کاری:
 - شنبه تا چهارشنبه:  08:00 - 16:30
 - پنجشنبه:  08:00 - 12:00 
 
 ☎️ تلفن: {support_phone}
-- (پاسخگویی: 08:00 - 16:30)
-🌐 وبسایت: {website_url}
+-شنبه تا چهارشنبه: (08:00 - 16:30)
+- پنجشنبه: (08:00 - 12:00)
+
+🌐 وب‌سایت رسمی تجارت الکترونیک هامون : {website_url}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 💙 ممنون که همراه ما هستید!
 با آرزوی بهترین‌ها برای شما 🌹""",
 
-
-    'repair_submitted': "✅ درخواست تعمیر ثبت شد\n\n📋 شماره: {request_number}",
-    
-    'rating_thanks': "🙏 سپاس از نظر شما\n\n⭐ امتیاز: {stars}",
-    
-    'complaint_submitted': "✅ شکایت ثبت شد\n\n🎫 شماره: {ticket_number}",
-    
-    'invalid_input': "❌ ورودی نامعتبر",
-    
-    'session_expired': "⏱ جلسه منقضی شد\n\nدوباره /start کنید",
-    
-    'error': "❌ خطا در پردازش\n لطفا دوباره امتحان کنید.",
-    
-    'loading': "⏳ در حال جستجو...",
-    
-    'no_orders_found': "📭 سفارشی یافت نشد",
-    
     'contact_info': """📞 اطلاعات تماس
 
 ☎️ {support_phone}
 🌐 {website_url}
 📧 {support_email}""",
 
-    'enter_complaint_text': "📝 متن شکایت را بنویسید:",
-    
-    'enter_rating_score': "⭐ امتیاز (1-5):",
-    
+    'payment_link': """💳 لینک پرداخت
+    مبلغ قابل پرداخت: {amount:,} تومان
+    برای مشاهده فاکتور و پرداخت روی لینک زیر کلیک کنید:
+    [🔗 مشاهده فاکتور و پرداخت]({link})
+
+    ⚠️ این لینک شامل فاکتور کامل خدمات نیز می‌باشد.""",
+
+    'payment_completed': """✅ پرداخت انجام شده
+    شماره فاکتور: {invoice_id}
+    کد مرجع: {reference_code}
+    مبلغ پرداختی: {amount:,} تومان
+    تاریخ پرداخت: {payment_date}""",
+
+    'maintenance': "🔧 سیستم در حال به‌روزرسانی\n\n☎️ پشتیبانی: {support_phone}",
+    'rate_limited': "⚠️ محدودیت درخواست\n\nلطفا {minutes} دقیقه صبر کنید.",
+    'auth_request': "🔐 لطفا کد/شناسه ملی خود را وارد کنید:",
+    'auth_success': "✅ احراز هویت موفق\n\nخوش آمدید {name} عزیز!",
+    'auth_failed': "❌ کد/شناسه ملی یافت نشد",
+    'order_not_found': "❌ سفارش یافت نشد\n\nلطفا شماره را بررسی کنید.",
+    'validation_error': "❌ {error_message}\n\nلطفاً دوباره تلاش کنید:",
+    'invalid_national_id': "❌ کد/شناسه ملی نامعتبر است",
+    'invalid_phone': "❌ شماره تلفن نامعتبر است", 
+    'invalid_order_number': "❌ شماره سفارش نامعتبر است",
+    'invalid_serial': "❌ سریال نامعتبر است",
+    'text_too_short': "⚠️ متن باید حداقل 10 کاراکتر باشد",
+    'repair_submitted': "✅ درخواست تعمیر ثبت شد\n\n📋 شماره: {request_number}",
+    'complaint_submitted': "✅ شکایت ثبت شد\n\n🎫 شماره: {ticket_number}",
+    'invalid_input': "❌ ورودی نامعتبر",
+    'session_expired': "⏱ جلسه منقضی شد\n\nدوباره /start کنید",
+    'error': "❌ خطا در پردازش\n لطفا دوباره امتحان کنید.",
+    'loading': "⏳ در حال جستجو...",
+    'no_orders_found': "📭 سفارشی یافت نشد",
+    'enter_complaint_text': "📝 متن شکایت را بنویسید:", 
     'enter_repair_description': "🔧 توضیحات تعمیر:",
-    
     'order_tracking_prompt': "🔢 شماره پذیرش:",
-    
     'serial_tracking_prompt': "#️⃣ سریال دستگاه:",
 }
 
-# =====================================================
-# Initialize
-# =====================================================
+
 def initialize_core():
     """Initialize core components"""
     config = BotConfig(
@@ -434,16 +507,3 @@ def initialize_core():
     validators = Validators()
     
     return config, validators, metrics
-
-# =====================================================
-# Exports
-# =====================================================
-__all__ = [
-    'UserState', 'OrderStatus', 'ComplaintType',
-    'BotConfig', 'BotMetrics', 'Validators',
-    'WORKFLOW_STEPS', 'STEP_PROGRESS', 'STEP_ICONS',
-    'STATUS_TEXT', 'COMPLAINT_TYPE_MAP', 'MESSAGES',
-    'get_step_display', 'calculate_progress', 
-    'generate_progress_bar', 'get_status_info',
-    'initialize_core'
-]
