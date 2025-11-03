@@ -1,12 +1,10 @@
 """ Session management layer - uses cache for persistence """
 import logging
 import asyncio
-import json
 from contextlib import asynccontextmanager
-from typing import Dict, Optional, List, AsyncGenerator
+from typing import Optional, List, AsyncGenerator
 from aiogram.fsm.storage.redis import RedisStorage
 
-from src.core.dynamic import DynamicConfigManager
 from src.core.cache import CacheManager
 from src.config.enums import UserState
 from src.models.user import UserSession
