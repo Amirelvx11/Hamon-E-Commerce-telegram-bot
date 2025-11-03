@@ -4,7 +4,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional, List, AsyncGenerator
 from aiogram.fsm.storage.redis import RedisStorage
-
 from src.core.cache import CacheManager
 from src.config.enums import UserState
 from src.models.user import UserSession
@@ -134,19 +133,22 @@ class SessionManager:
             session.last_bot_messages = (session.last_bot_messages + [message_id])[-5:]
             await self._save(session)
 
-    async def cleanup_messages(self, bot, chat_id: int):
-        """Delete tracked bot messages safely."""
+    async def cleanup_messages(self, bot, chat_id: int, limit: int | None = None):
+        """Delete tracked bot messages safely with optional limit."""
         async with self.get_session(chat_id) as session:
-            deleted = 0
-            for mid in session.last_bot_messages:
-                try:
-                    await bot.delete_message(chat_id=chat_id, message_id=mid)
-                    deleted += 1
-                except Exception as e:
-                    logger.debug(f"Cleanup skip mid={mid}: {e}")
-            session.last_bot_messages.clear()
-            await self._save(session)
-            logger.info(f"Cleaned up {deleted} messages for chat={chat_id}")
+            msg_ids = session.last_bot_messages[-limit:] if limit else session.last_bot_messages
+            if not msg_ids: return 0
+            try:
+                # Support bulk delete (up to 100)
+                for chunk in [msg_ids[i:i+100] for i in range(0, len(msg_ids), 100)]:
+                    await bot.delete_messages(chat_id=chat_id, message_ids=chunk)
+                session.last_bot_messages.clear()
+                await self._save(session)
+                logger.info(f"🧹 Cleaned {len(msg_ids)} messages in chat {chat_id}")
+                return len(msg_ids)
+            except Exception as e:
+                logger.warning(f"Cleanup failed for chat={chat_id}: {e}")
+                return 0
 
     async def get_by_national_id(self, national_id: str) -> Optional[int]:
         """Find chat_id by national ID"""

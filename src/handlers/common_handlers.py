@@ -63,10 +63,10 @@ def prepare_router(settings: Settings,
         await state.clear()
         await message.delete()
 
-        placeholder = await message.answer(
-            get_message('use_menu'),
-            reply_markup=KeyboardFactory.main_reply_menu(authenticated=False)
+        placeholder = await message.answer(get_message('use_menu'),
+        reply_markup=KeyboardFactory.main_reply_menu(authenticated=False)
         )
+        await session_manager.track_message(message.chat.id, placeholder.message_id)
 
         text = f"{get_message('welcome')}\n{get_message('use_menu')}"
         sent = await message.answer(text, reply_markup=KeyboardFactory.main_inline_menu(False))
@@ -81,10 +81,10 @@ def prepare_router(settings: Settings,
         if isinstance(event, Message):
             await session_manager.cleanup_messages(event.bot, event.chat.id)
 
-        placeholder = await event.answer(
-            get_message('main_menu'),
+        placeholder = await event.answer(get_message('main_menu'),
             reply_markup=KeyboardFactory.main_reply_menu(authenticated=False)
         )
+        await session_manager.track_message(event.chat.id, placeholder.message_id)
 
         session_data = await state.get_data()
         is_auth = session_data.get("is_authenticated", False)
@@ -104,12 +104,10 @@ def prepare_router(settings: Settings,
             await session_manager.cleanup_messages(event.bot, event.chat.id)
             
         text = get_message("help", support_phone=settings.support_phone, website_url=settings.website_url)
-        
         final_message = await _edit_or_respond(event, text, KeyboardFactory.cancel_inline())
         await session_manager.track_message(final_message.chat.id, final_message.message_id)
         
-        if isinstance(event, CallbackQuery):
-            await event.answer()
+        if isinstance(event, CallbackQuery): await event.answer()
 
     @router.message(Command("logout"))
     @router.callback_query(F.data == CallbackFormats.LOGOUT_PROMPT)
@@ -118,9 +116,10 @@ def prepare_router(settings: Settings,
         user = await state.get_data()
         if not user.get("is_authenticated", False):
             sent = await msg.answer(get_message("no_logout"),
-                                    reply_markup=KeyboardFactory.single_button("🏠 منوی اصلی", CallbackFormats.MAIN_MENU))
+            reply_markup=KeyboardFactory.single_button("🏠 منوی اصلی", CallbackFormats.MAIN_MENU))
             await session_manager.track_message(msg.chat.id, sent.message_id)
             if isinstance(event, CallbackQuery): await event.answer()
+            await session_manager.track_message(event.chat.id, event.message_id)
             return
 
         await state.clear()
@@ -140,13 +139,14 @@ def prepare_router(settings: Settings,
         if not (current_state and any(current_state.startswith(p) for p in active_prefixes)):
             msg = event.message if isinstance(event, CallbackQuery) else event
             try:
-                await msg.answer(
-                    get_message("no_operation"),
+                await msg.answer(get_message("no_operation"),
                     reply_markup=KeyboardFactory.cancel_inline()
                 )
+                await session_manager.track_message(msg.chat.id, msg.message_id)
             except Exception as e:
                 logger.exception(f"Cancel handler [no_state] failed: {e}")
             if isinstance(event, CallbackQuery): await event.answer()
+            await session_manager.track_message(event.chat.id, event.message_id)
             return
 
         session_data = await state.get_data()
@@ -156,14 +156,11 @@ def prepare_router(settings: Settings,
 
         text = get_message("cancelled")
         keyboard = KeyboardFactory.main_inline_menu(authenticated)
-
         final_message = await _edit_or_respond(event, text, keyboard)
         await session_manager.track_message(final_message.chat.id, final_message.message_id)
-        
         logger.debug(f"Cancel handled successfully for chat_id={final_message.chat.id}, state={current_state}")
         
-        if isinstance(event, CallbackQuery):
-            await event.answer()
+        if isinstance(event, CallbackQuery): await event.answer()
 
     @router.callback_query(F.data == "reload_config")
     async def admin_reload_handler(callback: CallbackQuery):
@@ -175,7 +172,8 @@ def prepare_router(settings: Settings,
 
         success = await dynamic_config.reload_config()
         msg = "✅ تنظیمات با موفقیت بارگذاری شد." if success else "❌ خطا در بارگذاری تنظیمات."
-        await callback.message.answer(msg)
+        sent = await callback.message.answer(msg)
+        await session_manager.track_message(callback.message.chat.id, sent.message_id)
         await callback.answer()
         logger.info(f"Admin {callback.from_user.id} reloaded dynamic configuration: {success}")
 
@@ -184,7 +182,8 @@ def prepare_router(settings: Settings,
     async def handle_admin_stats(message: Message):
         admin_id = int(settings.admin_chat_id or 0)
         if message.chat.id != admin_id and not dynamic_config.is_admin(message.chat.id):
-            await message.answer("🚫 این قابلیت فقط برای ادمین فعال است.")
+            sent = await message.answer("🚫 این قابلیت فقط برای ادمین فعال است.")
+            await session_manager.track_message(message.chat.id, sent.message_id)
             return
 
         try:
@@ -212,16 +211,7 @@ def prepare_router(settings: Settings,
             logger.exception(f"Admin stats error: {e}")
             text = f"❌ Error fetching stats: {e}"
 
-        await message.answer(text, parse_mode="MARKDOWN")
-
-    @router.message()
-    async def handle_unknown_text(message: Message):
-        """Catch unregistered texts (non-command)."""
-        if message.text and message.text.strip() in CALLBACK_TO_REPLY_BUTTON.keys():
-            return
-        await message.answer(
-            "⚠️ دستور ناشناخته!\nلطفا از منو یا دکمه‌های زیر استفاده کنید👇 ",
-            reply_markup=KeyboardFactory.main_reply_menu(authenticated=False)
-        )
+        sent = await message.answer(text, parse_mode="MARKDOWN")
+        await session_manager.track_message(message.chat.id, sent.message_id)
 
     return router
