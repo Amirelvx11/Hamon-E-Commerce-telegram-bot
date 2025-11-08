@@ -1,0 +1,229 @@
+"""support flow handler for complaints and repair requests."""
+import logging
+from typing import Union
+from aiogram import Router, F
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message, CallbackQuery
+from aiogram.exceptions import TelegramBadRequest
+from src.core.session import SessionManager
+from src.services.api import APIService
+from src.services.exceptions import APIResponseError, APIValidationError
+from src.services.keyboards import KeyboardFactory
+from src.config.callbacks import ServiceCallback, REPLY_BUTTON_TO_CALLBACK_ACTION
+from src.config.enums import ComplaintType
+from src.utils.validators import Validators
+from src.utils.messages import get_message
+from src.utils.formatters import Formatters
+from src.utils.helpers import _edit_or_respond
+from src.handlers.auth_flow import start_flow_unified
+
+logger = logging.getLogger(__name__)
+
+class SupportState(StatesGroup):
+    """FSM states for Support (complaint / repair) flows."""
+    awaiting_complaint_type = State()
+    awaiting_complaint_text = State()
+    awaiting_repair_text = State()
+
+def prepare_router(api_service: APIService, session_manager: SessionManager) -> Router:
+    router = Router(name="support_flow")
+    router.message.filter(F.chat.type == "private")
+
+    @router.callback_query(ServiceCallback.filter(F.action == "complaint_start"))
+    @router.message(F.text.in_({"📝 ثبت شکایات", "📝 ثبت شکایات/نظرات"}))
+    async def start_complaint(event: Union[CallbackQuery, Message], state: FSMContext):
+        """Starts complaint process — select complaint type."""
+        msg = event.message if isinstance(event, CallbackQuery) else event
+        chat_id = msg.chat.id
+        user_id = event.from_user.id
+        
+        async with session_manager.get_session(user_id) as session:
+            if not session.is_authenticated:
+                await msg.answer(get_message("not_authenticated"))
+                if isinstance(event, CallbackQuery): await event.answer(get_message('authenticated'))
+                return
+
+        if isinstance(event, CallbackQuery):
+            await event.answer(get_message("enter_complaint"))
+
+        await state.set_state(SupportState.awaiting_complaint_type)
+
+        await session_manager.cleanup_messages(event.bot, chat_id)  
+
+        refresh_msg = await msg.answer(
+            get_message('use_menu'),
+            reply_markup=KeyboardFactory.complaint_types_reply()
+        )
+        await session_manager.track_message(chat_id, refresh_msg.message_id)
+
+        inline_msg = await _edit_or_respond(
+            msg,
+            get_message("complaint_type_select"),
+            KeyboardFactory.complaint_types_inline()
+        )
+        await session_manager.track_message(chat_id, inline_msg.message_id)
+
+
+    @router.callback_query(StateFilter(SupportState.awaiting_complaint_type), ServiceCallback.filter(F.action == "select_complaint"))
+    async def process_complaint_type(callback: CallbackQuery, callback_data: ServiceCallback, state: FSMContext):
+        """Processes the selected complaint type and asks for text."""
+        msg = callback.message if isinstance(callback, CallbackQuery) else callback
+        chat_id = msg.chat.id
+        user_id = callback.from_user.id
+
+        try:
+            c_enum = ComplaintType.from_id(int(callback_data.type_id))
+        except (ValueError, TypeError):
+            await callback.answer("❌ نوع شکایت نامعتبر است", show_alert=True)
+            await session_manager.track_message(chat_id, callback.message.message_id)
+            return
+
+        await state.update_data(
+            complaint_type_id=c_enum.id,
+            complaint_type_text=c_enum.display,
+        )
+        await state.set_state(SupportState.awaiting_complaint_text)
+        
+
+        back_button = [{
+                "text": "🔙 بازگشت به انتخاب نوع شکایت",
+                "callback": ServiceCallback(action="complaint_start").pack()
+            }]
+        keyboard = KeyboardFactory.back_inline(extra_buttons=back_button)
+
+        await _edit_or_respond(callback.message, get_message("complaint_text_prompt"), keyboard)
+        if isinstance(callback, CallbackQuery) and getattr(callback, "bot", None):
+            await callback.answer("✍ لطفاً متن شکایت خود را ارسال کنید.")
+
+    @router.message(StateFilter(SupportState.awaiting_complaint_type),
+                    F.text.in_([
+                        "🔧 خرابی و تعمیرات دستگاه",
+                        "🚚 ارسال و دریافت دستگاه",
+                        "💰 بخش مالی و حسابداری",
+                        "👤 پشتیبانی و رفتار پرسنل",
+                        "📈 بخش فروش و توسعه بازار",
+                        "📝 سایر موارد"
+                    ]))
+    async def process_complaint_type_text(message: Message, state: FSMContext):
+        """Handle complaint type selection via reply keyboard text."""
+
+        await session_manager.cleanup_messages(message.bot, message.chat.id)
+        await message.answer("ثبت شکایات/نظرات", reply_markup=KeyboardFactory.cancel_reply())
+        await session_manager.track_message(message.chat.id, message.message_id)
+
+        mapped = REPLY_BUTTON_TO_CALLBACK_ACTION.get(message.text.strip())
+        if not mapped or not isinstance(mapped, ServiceCallback):
+            await message.answer("❌ گزینه نامعتبر است، لطفاً از منو استفاده کنید.")
+            return
+
+        fake_query = CallbackQuery(
+            id="reply_to_cb",
+            from_user=message.from_user,
+            message=message,
+            chat_instance=str(message.chat.id),
+            data=mapped.pack()
+        )
+        await process_complaint_type(fake_query, mapped, state)
+
+    @router.message(StateFilter(SupportState.awaiting_complaint_text), F.text)
+    async def process_complaint_text(message: Message, state: FSMContext):
+        chat_id = message.chat.id
+        await session_manager.cleanup_messages(message.bot, chat_id)
+        KeyboardFactory.remove()
+        try:
+            await message.delete()
+        except TelegramBadRequest:
+            pass
+
+        validation = Validators.validate_text_length(message.text, context="توضیح شکایت")
+        if not validation.is_valid:
+            sent = await message.answer(validation.error_message, reply_markup=KeyboardFactory.cancel_inline())
+            await session_manager.track_message(chat_id, sent.message_id)
+            return
+
+        bot_message = await message.answer(get_message("loading", action="ثبت شکایت"))
+        await session_manager.track_message(chat_id, bot_message.message_id)
+
+        async with session_manager.get_session(chat_id, message.from_user.id) as session:
+            u_data = await state.get_data()
+            try:
+                resp = await api_service.submit_complaint(
+                    national_id=session.national_id,
+                    phone_number=session.phone_number or "نامشخص",
+                    complaint_type_id=u_data.get("complaint_type_id"),
+                    complaint_type_text=u_data.get("complaint_type_text"),
+                    text=validation.cleaned_value,
+                    chat_id=str(chat_id),
+                )
+                text = Formatters.complaint_submitted(
+                    ticket_number=resp.ticket_number,
+                    complaint_type=u_data.get("complaint_type_text"),
+                )
+                await state.clear()
+            except (APIResponseError, APIValidationError) as e:
+                logger.error(f"Complaint submission failed: {e}")
+                text = get_message("complaint_error")
+
+        await message.answer(text=get_message('use_menu'), reply_markup=KeyboardFactory.main_reply_menu(is_auth=True))
+        await _edit_or_respond(bot_message, text, KeyboardFactory.main_inline_menu(is_auth=True))
+
+
+    @router.callback_query(ServiceCallback.filter(F.action == "repair_start"))
+    @router.message(F.text == "📞 درخواست تعمیرات")
+    async def start_repair(event: Union[CallbackQuery, Message], state: FSMContext):
+        """Initiates repair description input."""
+        async with session_manager.get_session(event.from_user.id) as session:
+            if not session.is_authenticated:
+                msg = event.message if isinstance(event, CallbackQuery) else event
+                await msg.answer(get_message("not_authenticated"))
+                await session_manager.track_message(msg.chat.id, msg.message_id)
+                if isinstance(event, CallbackQuery): await event.answer(get_message('not_authenticated'))
+                return
+
+        await start_flow_unified(
+            event=event,
+            state=state,
+            new_state=SupportState.awaiting_repair_text,
+            prompt_text=get_message("repair_text_prompt"),
+            session_manager=session_manager,
+            event_message=get_message("enter_repair"),
+        )
+
+    @router.message(StateFilter(SupportState.awaiting_repair_text), F.text)
+    async def process_repair_text(message: Message, state: FSMContext):
+        chat_id = message.chat.id
+        await session_manager.cleanup_messages(message.bot, chat_id)
+        try:
+            await message.delete()
+        except TelegramBadRequest:
+            pass
+
+        validation = Validators.validate_text_length(message.text, context="توضیح تعمیر")
+        if not validation.is_valid:
+            sent = await message.answer(validation.error_message, reply_markup=KeyboardFactory.cancel_inline())
+            await session_manager.track_message(chat_id, sent.message_id)
+            return
+
+        bot_message = await message.answer(get_message("loading", action="ثبت درخواست تعمیر"))
+        await session_manager.track_message(chat_id, bot_message.message_id)
+
+        async with session_manager.get_session(chat_id, message.from_user.id) as session:
+            try:
+                resp = await api_service.submit_repair_request(
+                    national_id=session.national_id,
+                    phone_number=session.phone_number or "نامشخص",
+                    description=validation.cleaned_value,
+                )
+                text = Formatters.repair_submitted(ticket_number=resp.ticket_number)
+                await state.clear()
+
+            except (APIResponseError, APIValidationError) as e:
+                logger.error(f"Repair submission failed: {e}")
+                text = get_message("repair_error")
+
+        await message.answer(text=get_message('use_menu'), reply_markup=KeyboardFactory.main_reply_menu(is_auth=True))
+        await _edit_or_respond(bot_message, text, KeyboardFactory.main_inline_menu(is_auth=True))
+
+    return router
