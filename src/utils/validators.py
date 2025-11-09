@@ -70,29 +70,30 @@ class Validators:
     @staticmethod
     def validate_serial(serial: Optional[str]) -> ValidationResult:
         """Validate device serial"""
-        if not serial:
+        if not serial or not serial.strip():
             return ValidationResult(
                 is_valid=False,
                 error_message="❌ سریال دستگاه خالی است!"
             )
         
         cleaned = re.sub(r'[\s\-_]', '', serial.strip().upper())
-        
-        if not cleaned:
-            return ValidationResult(
-                is_valid=False,
-                error_message="❌ شماره سریال نامعتبر"
-            )
-        
+
+        if len(cleaned) == 11 and (
+            cleaned.startswith("00HEC") or cleaned.startswith("05HEC")
+        ) and cleaned[5:].isdigit():
+            return ValidationResult(True, cleaned_value=cleaned)
+
         if cleaned.isdigit() and len(cleaned) == 6 and cleaned != "000000":
-            return ValidationResult(is_valid=True,cleaned_value=cleaned)
-        
-        if re.match(r'^[A-Z0-9]{10,12}$', cleaned):
-            return ValidationResult(is_valid=True,cleaned_value=cleaned)
+            return ValidationResult(is_valid=True, cleaned_value=cleaned)
         
         return ValidationResult(
             is_valid=False,
-            error_message="❌ سریال باید 6 رقم آخر یا کد کامل 11 کاراکتری باشد"
+            error_message=(
+                "❌ فرمت سریال نامعتبر است!\n"
+                "شماره سریال باید یکی از موارد زیر باشد:\n"
+                "• ۶ رقم آخر مثل: 234567\n"
+                "• یا کامل آن مثل: 00HEC234567 یا 05HEC234567"
+            )
         )
     
     @staticmethod
