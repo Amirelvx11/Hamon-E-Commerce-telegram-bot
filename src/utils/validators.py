@@ -37,10 +37,10 @@ class Validators:
 
         # 10-digit: personal national ID checksum validation
         if len(cleaned) == 10:
-            # Avoid invalid sequences like 0000000000, 1111111111, etc.
             if len(set(cleaned)) == 1:
                 return ValidationResult(False, None, "❌ کد ملی نامعتبر است.")
-        
+
+            # iranian nid checksum validation
             check = sum(int(cleaned[i]) * (10 - i) for i in range(9)) % 11
             valid = (check < 2 and int(cleaned[9]) == check) or (check >= 2 and int(cleaned[9]) == 11 - check)
 
