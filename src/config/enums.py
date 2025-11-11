@@ -165,12 +165,12 @@ class ComplaintType(Enum):
     def map_to_server(cls, type_id: int) -> Dict[str, Any]:
         """Return corresponding GUID + unit mapping for C# endpoint payload."""
         mapping = {
-            1: {"subject_guid": "18141068-5b2a-47d0-b48c-797399dc7002", "unit": 2},  # DEVICE_ISSUE
+            1: {"subject_guid": "b97cc769-1743-4d1b-921a-533f2029fcd7", "unit": 2},  # DEVICE_ISSUE
             2: {"subject_guid": "66d2e05e-3a4f-4729-b28a-20688366eacd", "unit": 3},  # SHIPPING
             3: {"subject_guid": "1c8d9167-ad1f-4a96-ad46-c9e07c7152ac", "unit": 4},  # FINANCIAL
-            4: {"subject_guid": "fa21a470-ffcc-43d1-8c21-8f38c4b21f0d", "unit": 3},  # PERSONNEL
-            5: {"subject_guid": "1ccd014a-99d2-4f35-b1b6-df1b71099417", "unit": 1},  # SALES
-            6: {"subject_guid": "d369c193-95ce-4d7b-8027-eed6c09b652d", "unit": 5},  # OTHER
+            4: {"subject_guid": "9419941c-bc73-4dab-9169-11651517e151", "unit": 3},  # PERSONNEL
+            5: {"subject_guid": "20e10aee-87ec-47c9-b1ce-a9e5b3ae369f", "unit": 1},  # SALES
+            6: {"subject_guid": "d369c193-95ce-4d7b-8028-7d961c339f28", "unit": 0},  # OTHER
         }
         return mapping.get(type_id) or {"subject_guid": None, "unit": 0}
 
