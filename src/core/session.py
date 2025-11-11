@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional, List, AsyncGenerator
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.methods import DeleteMessages
 from src.core.cache import CacheManager
 from src.config.enums import UserState
 from src.models.user import UserSession
@@ -17,8 +18,9 @@ class SessionManager:
     DEFAULT_TTL = 1800  # 30 min
     AUTH_TTL = 3600     # 60 min
     
-    def __init__(self, cache: CacheManager):
+    def __init__(self, cache: CacheManager, notifications=None):
         self.cache = cache
+        self.notifications = notifications
         self.metrics = { 'sessions_created': 0, 'auth_success': 0 }
 
     def update_defaults_from_config(self, cfg: dict):
@@ -45,14 +47,13 @@ class SessionManager:
             self.metrics["sessions_created"] += 1
             logger.info(f"New session created for chat_id={chat_id}")
         
-        if user_id and session.user_id != user_id:
+        if user_id:
             session.user_id = user_id
-
         try:
             yield session
         finally:
             if session:
-                session.refresh()
+                session.refresh() 
                 await self._save(session)
     
     async def _get(self, chat_id: int) -> Optional[UserSession]:
@@ -72,7 +73,7 @@ class SessionManager:
         key = f"{self.SESSION_PREFIX}{session.chat_id}"
         ttl = self.AUTH_TTL if session.is_authenticated else self.DEFAULT_TTL
         try:
-            return await self.cache.set(key, session.model_dump_json(), ttl)
+            return await self.cache.set(key, session.model_dump_json(exclude_none=True), ttl)
         except Exception as e:
             logger.error(f"Session save failed for {key}: {e}")
             return False
@@ -96,12 +97,11 @@ class SessionManager:
 
             await self.cache.set(f"{self.AUTH_PREFIX}{national_id}", chat_id, self.AUTH_TTL)
             self.metrics["auth_success"] += 1
-            await self._save(session)
             logger.info(f"Authenticated user {national_id} at chat={chat_id}")
             return session
     
     async def logout(self, chat_id: int) -> None:
-        """Clear authentication and persist logout state."""
+        """Clear authentication state within a session context."""
         async with self.get_session(chat_id) as session:
             if session.national_id:
                 await self.cache.delete(f"{self.AUTH_PREFIX}{session.national_id}")
@@ -112,7 +112,6 @@ class SessionManager:
             session.phone_number = None
             session.state = UserState.IDLE
             session.temp_data.clear()
-            await self._save(session)
             logger.info(f"Logged out: chat_id={chat_id}")
     
     async def update_state(self,chat_id: int, new_state: UserState, **kwargs) -> UserSession:
@@ -124,31 +123,89 @@ class SessionManager:
                 session.temp_data.update(kwargs)
 
             logger.debug(f"State: {old_state.name} → {new_state.name} (chat={chat_id})")
-            await self._save(session)
             return session
 
     async def track_message(self, chat_id: int, message_id: int):
         """Append bot message ID to tracked list."""
         async with self.get_session(chat_id) as session:
             session.last_bot_messages = (session.last_bot_messages + [message_id])[-5:]
-            await self._save(session)
 
-    async def cleanup_messages(self, bot, chat_id: int, limit: int | None = None):
+    async def cleanup_messages(self, bot, chat_id: int,* , keep_message_id: int | None = None, limit: int | None = None) -> int:
         """Delete tracked bot messages safely with optional limit."""
         async with self.get_session(chat_id) as session:
             msg_ids = session.last_bot_messages[-limit:] if limit else session.last_bot_messages
             if not msg_ids: return 0
+
+            if keep_message_id:
+                msg_ids = [mid for mid in msg_ids if mid != keep_message_id]
+
+            total_deleted = 0            
             try:
-                # Support bulk delete (up to 100)
+                # Split into chunks of ≤100 IDs — Telegram API limit
                 for chunk in [msg_ids[i:i+100] for i in range(0, len(msg_ids), 100)]:
-                    await bot.delete_messages(chat_id=chat_id, message_ids=chunk)
-                session.last_bot_messages.clear()
+                    try:
+                        result: bool = await bot(DeleteMessages(chat_id=chat_id, message_ids=chunk))
+                    except Exception as e:
+                        logger.debug(f"Bulk delete fallback due to {e}")
+                        result: bool = await bot.delete_messages(chat_id=chat_id, message_ids=chunk)
+                    if result:
+                        total_deleted += len(chunk)
+                    else:
+                        logger.warning(f"Partial cleanup failed for chat={chat_id}, chunk={chunk}")
+
+                session.last_bot_messages = ([keep_message_id] if keep_message_id else [])
                 await self._save(session)
-                logger.info(f"🧹 Cleaned {len(msg_ids)} messages in chat {chat_id}")
-                return len(msg_ids)
+
+                return total_deleted
+
             except Exception as e:
-                logger.warning(f"Cleanup failed for chat={chat_id}: {e}")
+                logger.warning(f"Cleanup failed for chat={chat_id}: {e}", exc_info=True)
                 return 0
+
+    async def is_rate_limited(self, chat_id: int, max_requests: int = 100, window_seconds: int = 3600) -> bool:
+        """rate limit check using cache atomic increment."""
+        key = f"rate:{chat_id}"
+        try:
+            count = await self.cache.increment(key) or 0
+            if count == 1:
+                await self.cache.expire(key, window_seconds)
+            elif count > max_requests:
+                ttl = await self.cache.redis.ttl(key) if self.cache.redis else window_seconds
+                if not self.notifications:
+                    from src.services.notifications import NotificationService
+                    bot_ref = getattr(self.cache, "bot", None)
+                    if bot_ref:
+                        self.notifications = NotificationService(bot_ref, self)
+                if self.notifications:
+                    await self.notifications.rate_limit_exceeded(chat_id, ttl or window_seconds)
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Rate-limit check failed for {chat_id}: {e}")
+            return False
+
+    async def cleanup_expired(self) -> list[UserSession]:
+        """
+        Scan Redis for sessions past their expiry window.
+        Return list of UserSession objects that were removed.
+        """
+        expired_sessions = []
+        try:
+            keys = await self.cache.scan_keys(f"{self.SESSION_PREFIX}*")
+            for key in keys:
+                try:
+                    raw = await self.cache.get(key)
+                    if not raw:
+                        continue
+                    session = UserSession.model_validate(raw)
+                    if session.is_expired():
+                        await self.delete(session.chat_id)
+                        expired_sessions.append(session)
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.error(f"Expired cleanup failure: {e}", exc_info=True)
+        return expired_sessions
 
     async def get_by_national_id(self, national_id: str) -> Optional[int]:
         """Find chat_id by national ID"""
@@ -204,9 +261,11 @@ class SessionManager:
 
 class BackgroundTasks:
     """Periodic background tasks for session cleanup."""
+    from src.services.notifications import NotificationService
     
-    def __init__(self, session_manager: SessionManager):
+    def __init__(self, session_manager: SessionManager, notifications):
         self.manager = session_manager
+        self.notifications = notifications
         self._task : Optional[asyncio.Task] = None
     
     async def start(self):
@@ -215,22 +274,19 @@ class BackgroundTasks:
         self._task = asyncio.create_task(self._cleanup_loop(interval=3600))
         logger.info("Session background cleanup task started.")
 
-    async def _cleanup_loop(self, interval: int):
-        """Periodically scan for and delete expired sessions if Redis TTL fails."""
+    async def _cleanup_loop(self, interval: int = 1800):
+        """Periodically clean expired sessions and notify users."""
         while True:
             await asyncio.sleep(interval)
             try:
-                logger.info("Running periodic expired session cleanup...")
-                count = 0
-                all_sessions_keys = await self.manager.cache.scan_keys(f"{self.manager.SESSION_PREFIX}*")
-                for key in all_sessions_keys:
-                    pass # We can add cleanup logic here if needed later.
-                logger.info(f"Cleanup finished. Scanned {len(all_sessions_keys)} sessions.")
+                expired_list = await self.manager.cleanup_expired()
+                for s in expired_list:
+                    await self.notifications.session_expired(s.chat_id)
+                logger.info(f"Expired sessions cleaned: {len(expired_list)}")
             except asyncio.CancelledError:
-                logger.info("Background cleanup task stopped.")
                 break
             except Exception as e:
-                logger.error(f"Background cleanup loop error: {e}", exc_info=True)
+                logger.error(f"Cleanup loop runtime error: {e}", exc_info=True)
 
     async def stop(self):
         if self._task and not self._task.done():
