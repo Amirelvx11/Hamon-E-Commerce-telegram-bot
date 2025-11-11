@@ -8,12 +8,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Set
-from collections import defaultdict
-
-from .cache import CacheManager
-from .client import APIClient
-from ..config.settings import Settings
-
+from src.core.cache import CacheManager
+from src.core.client import APIClient
+from src.config.settings import Settings
+from src.services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +57,17 @@ class DynamicConfig:
 class DynamicConfigManager:
     """Async dynamic configuration with cache & file persistence, hot reload, and callbacks."""
     
-    def __init__(self, cache: Optional[CacheManager] = None,
+    def __init__(self,
+                 cache: Optional[CacheManager] = None,
                  api_client: Optional[APIClient] = None,
-                 config: Optional[Settings] = None):
+                 notifications: Optional[NotificationService] = None,
+                 config: Optional[Settings] = None
+                 ):
         """Initialize with optional cache"""
         self.cache, self.api_client, self.config = cache, api_client, config
+        self.notifications = notifications # CORRECTED: No trailing comma
         self.current_config: DynamicConfig = self._get_defaults()
         self.config_file = Path("config/dynamic.json")
-        self._rate_limiters = defaultdict(lambda: {"count": 0, "reset_at": datetime.now()})
         self._lock = asyncio.Lock()
         self._callbacks: List = []
         self.cache_key = "dynamic:config"
@@ -146,14 +147,18 @@ class DynamicConfigManager:
         )
 
     async def set_maintenance_mode(self, enabled: bool, message: Optional[str] = None):
-        self.current_config.maintenance.update(
-            {
-                "enabled": enabled,
-                "message": message or self.get_maintenance_message(),
-                "started_at": datetime.now().isoformat(),
-            }
-        )
+        """Toggle maintenance mode and broadcast to all users."""
+        self.current_config.maintenance.update({
+            "enabled": enabled,
+            "message": message or self.get_maintenance_message(),
+            "started_at": datetime.now().isoformat(),
+        })
         await self._save_all()
+        if self.notifications:
+            try:
+                await self.notifications.broadcast(self.current_config.maintenance["message"])
+            except Exception as e:
+                logger.error(f"Maintenance broadcast failed: {e}", exc_info=True)
         await self._notify(["maintenance"])
     
     async def _save_all(self):
