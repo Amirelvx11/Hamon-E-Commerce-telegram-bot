@@ -1,10 +1,43 @@
 """ Unified formatting module for all display and text formatting needs - Combines display layouts with utility formatters """
+from __future__ import annotations
+import jdatetime
+from datetime import datetime
 from dataclasses import dataclass
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Union
 from src.config.enums import WorkflowSteps, DeviceStatus
 from src.config.callbacks import OrderCallback
 from src.models.user import UserSession
-from src.utils.helpers import safe_get, get_current_jalali_date
+from src.models.domain import Order
+
+def safe_get(data: Any, *keys, default: Any = None) -> Any:
+    """Safely get nested attributes or dict keys."""
+    current = data
+    for key in keys:
+        if current is None:
+            return default
+        if isinstance(current, dict):
+            current = current.get(key, default)
+        elif isinstance(current, (list, tuple)) and isinstance(key, int):
+            try:
+                current = current[key]
+            except (IndexError, KeyError):
+                return default
+        elif hasattr(current, key):
+            current = getattr(current, key, default)
+        else:
+            return default
+    return current if current is not None else default
+
+def gregorian_to_jalali(dt: datetime | str) -> str:
+    """Convert Gregorian datetime/ISO string to Jalali date string."""
+    try:
+        if isinstance(dt, str):
+            dt = datetime.fromisoformat(dt)
+        j = jdatetime.datetime.fromgregorian(datetime=dt)
+        return f"{j.year}/{j.month:02d}/{j.day:02d}"
+    except Exception:
+        return "نامشخص"
+
 
 @dataclass
 class FormatConfig:
@@ -21,56 +54,54 @@ class Formatters:
     config = FormatConfig()
 
     @classmethod
-    def user_info(cls, session_data: Dict) -> str:
-        """Format complete user profile"""
-        name = safe_get(session_data, 'user_name', default='نامشخص')
-        national_id = safe_get(session_data, 'nationalId', 
-                    default=safe_get(session_data, 'national_id', default='نامشخص'))
-        phone = safe_get(session_data, 'phone_number')
-        city = safe_get(session_data, 'city', default='ثبت نشده')
-
-        is_authenticated = safe_get(session_data, 'is_authenticated', default=False)
-        auth_status = "احراز هویت شده" if is_authenticated else "عدم احراز هویت"
-        last_visit = get_current_jalali_date()
-
-        formatted_text =  f"""👤 **اطلاعات حساب کاربری**
-━━━━━━━━━━━━━━━━━━━━━━
-
-👨‍💼 **مشتری:** {name}
-🌐 **کد/شناسه ملی:** `{national_id}`
-📱 **شماره همراه:** `{phone}`
-📍 **استان/شهر:** {city}
-🔐 **وضعیت:** {auth_status}
-
-⏰ **آخرین بازدید:** {last_visit}"""
-
-        return formatted_text, []
+    def user_info(cls, session: UserSession) -> Tuple[str, list]:
+        """Handle both UserSession object and dict"""
+        name = session.user_name or 'نامشخص'
+        nid = session.national_id or 'نامشخص'
+        phone = session.phone_number or 'ثبت نشده'
+        city = session.city or 'ثبت نشده'
+        is_auth = session.is_authenticated
+        
+        auth_status = "احراز هویت شده" if is_auth else "عدم احراز هویت"
+        visit = gregorian_to_jalali(datetime.now())
+        txt = (
+            "👤 **اطلاعات حساب کاربری**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👨‍💼 **مشتری:** {name}\n"
+            f"🌐 **کد/شناسه ملی:** `{nid}`\n"
+            f"📱 **شماره همراه:** `{phone}`\n"
+            f"📍 **استان/شهر:** {city}\n"
+            f"🔐 **وضعیت:** {auth_status}\n\n"
+            f"⏰ **آخرین بازدید:** {visit}"
+        )
+        return txt, []
 
     @classmethod
-    def my_orders_summary(cls, session: 'UserSession') -> Tuple[str, list]:
-        """Generate order summary using the cached AuthResponse/Order models."""
-        auth_raw = session.temp_data.get("raw_auth_data", {})
+    def my_orders_summary(cls, session:UserSession) -> Tuple[str, list]:
+        """Generate order summary using the cached order data."""
+        raw = session.temp_data.get("raw_auth_data", {})
         orders = session.last_orders or []
+        order_number = raw.get("order_number") or session.order_number or "نامشخص"
+        invoice_number = raw.get("invoice_number") or ""
+        payment_link = raw.get("payment_link") or ""
+        factor_paid = bool(raw.get("factorPayment") or raw.get("payment"))
         
-        order_number = auth_raw.get("number") or auth_raw.get("order_number")
-        factor_info = auth_raw.get("factorPayment")
-        payment_link = auth_raw.get("factorId_paymentLink")
-        
-        #total_orders = sum(len(auth_raw.get("number")))
-        total_devices = sum(len(o.get("devices", [])) or 1 for o in orders)
+        devices = raw.get("devices", [])
+        total_devices = len(devices) if devices else 0
 
-        if factor_info:
-            payment_line = f"🧾 فاکتور پرداخت شده (شماره: `{auth_raw.get('$$_factorId')}`)"
-        elif payment_link:
-            payment_line = f"💳 فاکتور آماده پرداخت (شماره: `{auth_raw.get('$$_factorId')}`)"
+        if payment_link:
+            if factor_paid :
+                payment_line = f"🧾 فاکتور پرداخت شده (شماره: `{invoice_number}`)"
+            else:
+                payment_line = f"💳 فاکتور آماده پرداخت (شماره: `{invoice_number}`)"
         else:
             payment_line = "⚠️ هنوز فاکتور پرداختی ثبت نشده است."
 
         text = (
             f"📦 **وضعیت سفارشات شما**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            "**مشخصات آخرین سفارش شما** \n"
             f"🔢 شماره پذیرش شما: `{order_number}`\n"
-            #f"📋 تعداد سفارش‌ها: {total_orders}\n"
             f"📱 تعداد کل دستگاه‌ها: {total_devices}\n\n"
             f"{payment_line}\n"
         )
@@ -103,90 +134,80 @@ class Formatters:
         return text
     
     @classmethod
-    def order_detail(cls, order: Dict[str, Any], is_auth: bool = False) -> Tuple[str, List]:
-        """Format detailed customer's order information."""
-        if not order:
-            return "❌ اطلاعات سفارش یافت نشد",[]       
+    def order_detail(cls, order: Union[Order, dict], is_auth: bool = False) -> Tuple[str, List]:
         
-        order_number = safe_get(order, "order_number", default="---")
-        tracking_code = safe_get(order, "tracking_code", default="---")
-        current_step = safe_get(order, "current_step", default=0)
-        step_info = WorkflowSteps.get_step_info(current_step)
-        registration_date = safe_get(order, "registration_date", default="نامشخص")
-        last_visit = get_current_jalali_date()
+        if not order or (isinstance(order, dict) and order.get("semantic_error")):
+            return "❌ خطا در دریافت اطلاعات سفارش از سرور.", []
 
-        devices = safe_get(order, "devices", default=[])
-        total_devices = len(devices)
+        if isinstance(order, dict):
+            order = Order.model_validate(order)
+
+        if not order:
+            return "❌ اطلاعات سفارش یافت نشد", []
+
+        step = WorkflowSteps.get_step_info(order.status_code)
+        reg_date = order.registration_date or "نامشخص"
+        visit = gregorian_to_jalali(datetime.now())
+
+        devices = order.devices or []
         preview_count = cls.config.max_devices_preview
-        visible_devices = devices[:preview_count]
+        visible = devices[:preview_count]
+        dev_txt = ""
 
-        device_text = ""
-        if total_devices <= 0:
-            device_text = "📱 هیچ دستگاهی ثبت نشده است."
-        elif total_devices == 1:
-            dev = devices[0]
-            model = safe_get(dev, "model", default="نامشخص")
-            serial = safe_get(dev, "serial", default="---")
-            status_raw = safe_get(dev, "status_code") or safe_get(dev, "status", default=0)
-            device_status = DeviceStatus.get_display(status_raw)
-            device_text += (
-                f"**📱 مشخصات دستگاه:**\n"
-                f"- مدل: {model}\n"
-                f"- سریال: `{serial}`\n"
-                f"- وضعیت: {device_status}\n\n"
+        if not devices:
+            dev_txt = "📱 هیچ دستگاهی ثبت نشده است."
+        elif len(devices) == 1:
+            d = visible[0]
+            dev_txt = (
+                "**📱 مشخصات دستگاه:**\n"
+                f"- مدل: {d.model}\n"
+                f"- سریال: `{d.serial}`\n"
+                f"- وضعیت: {DeviceStatus.get_display(d.status_code)}\n\n"
             )
         else:
-            device_text += f"📱 تعداد کل دستگاه‌ها: {total_devices}\n\n"
-            for i, dev in enumerate(visible_devices, start=1):
-                model = safe_get(dev, "model", default="نامشخص")
-                serial = safe_get(dev, "serial", default="---")
-                status_raw = safe_get(dev, "status_code") or safe_get(dev, "status", default=0)
-                device_status = DeviceStatus.get_display(status_raw)
-                device_text += f"**دستگاه {i}:**\n- مدل: {model}\n- سریال: `{serial}`\n- وضعیت: {device_status}\n\n"
+            dev_txt += f"📱 تعداد کل دستگاه‌ها: {len(devices)}\n\n"
+            for i, d in enumerate(visible, 1):
+                dev_txt += (
+                    f"**دستگاه {i}:**\n"
+                    f"- مدل: {d.model}\n"
+                    f"- سریال: `{d.serial}`\n"
+                    f"- وضعیت: {DeviceStatus.get_display(d.status_code)}\n\n"
+                )
+            if len(devices) > preview_count:
+                dev_txt += f"و {len(devices)-preview_count} دستگاه دیگر ...\n"
 
-            if total_devices > preview_count:
-                device_text += f"و {total_devices - preview_count} دستگاه دیگر ...\n"
+        pay_caption = ""
+        if order.is_paid:
+            pay_caption = f"🧾 فاکتور پرداخت شده (شماره: {order.invoice_number or 'نامشخص'})\n"
+        elif order.has_payment_link:
+            pay_caption = f"💳 فاکتور قابل پرداخت (شماره: {order.invoice_number or 'نامشخص'})\n"
+        else:
+            pay_caption = "⏳ در انتظار صدور فاکتور"
+            
+        txt = (
+            "📋 **جزئیات سفارش**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔢 شماره پذیرش: `{order.order_number}`\n"
+            f"🗂 کد رهگیری پذیرش (رسید انبار): `{order.tracking_code or '---'}`\n"
+            f"📅 تاریخ ثبت انبار: {reg_date}\n\n"
+            f"📊 **وضعیت کلی سفارش:**\n {step['name']} {step['icon']} \n"
+            f"{step['bar']} % {step['progress']}\n\n"
+            f"{dev_txt}\n{pay_caption}\n⏰ **آخرین بازدید:** {visit}"
+        )
 
-        payment = safe_get(order, "payment")
-        payment_caption = ""
-        if payment and payment.get("payment_link"):
-            invoice = payment.get("invoice_id") or "نامشخص"
-            if payment.get("payment_completed"):
-                payment_caption = f"🧾 فاکتور پرداخت شده (شماره فاکتور: {invoice})\n"
-            else:
-                payment_caption = f"💳 فاکتور قابل پرداخت (شماره فاکتور: {invoice})\n"
-            
-        formatted_text = (
-            f"📋 **جزئیات سفارش**\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔢 شماره پذیرش: `{order_number}`\n"
-            f"🗂 کد رهگیری پذیرش: `{tracking_code}`\n"
-            f"📅 تاریخ ثبت انبار: {registration_date}\n\n"
-            f"📊 **وضعیت کلی سفارش:**\n {step_info['name']} {step_info['icon']} \n{step_info['bar']} % {step_info['progress']}\n\n"
-            f"{device_text}\n"
-            f"{payment_caption}"
-            f"\n⏰ **آخرین بازدید:** {last_visit}"
-        )   
-            
-        extra_buttons = []
-        if total_devices > preview_count:
-            extra_buttons.append({
-                    "text": "🔍 مشاهده لیست کامل دستگاه‌ها",
-                    "callback":  OrderCallback(
-                    action="devices_list", 
-                    order_number=order_number, 
-                    page=1
-                ).pack()
-                })
-            
+        buttons = []
+        if len(devices) > preview_count:
+            buttons.append({
+                "text": "🔍 مشاهده لیست کامل دستگاه‌ها",
+                "callback": OrderCallback(action="devices_list", order_number=order.order_number, page=1).pack()
+            })
         if is_auth:
-            extra_buttons.append({
+            buttons.append({
                 "text": "🔙 بازگشت به سفارش‌های من",
                 "callback": OrderCallback(action="orders_list").pack()
             })
-
-        return formatted_text, extra_buttons
-
+        return txt, buttons
+    
     @classmethod
     def device_list_paginated(cls, order: Dict[str, Any], page: int = 1) -> str:
         """Formats a dedicated, paginated list of devices for an order - Shows 8 devices per page."""
@@ -228,7 +249,7 @@ class Formatters:
     @classmethod
     def complaint_submitted(cls, ticket_number: str, complaint_type: str) -> str:
         """Formats the complaint submission confirmation message."""
-        date = get_current_jalali_date()
+        date = gregorian_to_jalali(datetime.now())
         return (
             f"✅ **شکایت شما با موفقیت ثبت شد**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -241,7 +262,7 @@ class Formatters:
     @classmethod
     def repair_submitted(cls, ticket_number: str) -> str:
         """Formats the repair request submission confirmation message."""
-        date = get_current_jalali_date()
+        date = gregorian_to_jalali(datetime.now())
         return (
             f"✅ **درخواست تعمیر شما با موفقیت ثبت شد**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n"
