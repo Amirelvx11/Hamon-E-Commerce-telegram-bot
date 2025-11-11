@@ -53,7 +53,6 @@ class DynamicConfig:
             data["last_updated"] = datetime.now().isoformat()
             return cls.from_dict(data)
 
-
 class DynamicConfigManager:
     """Async dynamic configuration with cache & file persistence, hot reload, and callbacks."""
     
@@ -65,7 +64,7 @@ class DynamicConfigManager:
                  ):
         """Initialize with optional cache"""
         self.cache, self.api_client, self.config = cache, api_client, config
-        self.notifications = notifications # CORRECTED: No trailing comma
+        self.notifications = notifications 
         self.current_config: DynamicConfig = self._get_defaults()
         self.config_file = Path("config/dynamic.json")
         self._lock = asyncio.Lock()
