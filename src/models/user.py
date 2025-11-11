@@ -4,24 +4,7 @@ from datetime import datetime,timedelta
 from typing import Optional, Dict, Any, List
 from src.config.settings import get_config
 from src.config.enums import UserState
-from src.models.domain import sanitize_text, clean_numeric_string
-
-class UserProfile(BaseModel):
-    """Represents the canonical, persistent user profile"""
-    user_id: int
-    national_id: str
-    name: str
-    phone: Optional[str] = None # Will become required when OTP is implemented
-    city: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.now)
-
-    @field_validator('national_id', mode='before')
-    def clean_nid(cls, v):
-        return clean_numeric_string(v)
-
-    @field_validator('name', 'city', mode='before')
-    def clean_texts(cls, v):
-        return sanitize_text(v)
+from src.models.domain import sanitize_text
 
 class UserSession(BaseModel):
     """Unified user session model – cached in Redis and kept in memory."""
