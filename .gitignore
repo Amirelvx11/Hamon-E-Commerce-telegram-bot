@@ -3,9 +3,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-# Dynamic config
-config/
-.dynamic.json
+# Dynamic config folder (root level only)
+/config/
+/config/dynamic.json
 
 # Python
 __pycache__/
@@ -41,6 +41,7 @@ bot.log
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Backup files - exclude dirty backups specifically
 *_dirty_*.txt

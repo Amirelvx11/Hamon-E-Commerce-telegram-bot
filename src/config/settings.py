@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Settings:
     telegram_token: str
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str 
     redis_password: Optional[str] = None
     auth_token: str = ""
     server_urls: Dict[str, str] = field(default_factory=dict)
@@ -37,8 +37,8 @@ class Settings:
     api_retry_delay: int = 1
     
     # Business
-    support_phone: str = os.getenv("SUPPORT_PHONE","03133127")
-    website_url: str = os.getenv("WEBSITE_URL","https://hamoonpay.com")
+    support_phone: str = os.getenv("SUPPORT_PHONE")
+    website_url: str = os.getenv("WEBSITE_URL")
     admin_chat_id: str = os.getenv("ADMIN_CHAT_ID")
 
     # Singleton instance
@@ -77,7 +77,7 @@ class Settings:
         return cls(
             telegram_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
             auth_token=os.getenv("AUTH_TOKEN", ""),
-            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+            redis_url=os.getenv("REDIS_URL"),
             redis_password=os.getenv("REDIS_PASSWORD"),
             server_urls=server_urls,
             maintenance_mode=os.getenv("MAINTENANCE_MODE", "false").lower() in ["true", "1"],
