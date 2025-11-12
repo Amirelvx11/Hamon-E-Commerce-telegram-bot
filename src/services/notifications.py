@@ -3,8 +3,7 @@ Notifications Service
 Modernized for Aiogram 3.x using structured callbacks and integrated SessionManager tracking.
 """
 from __future__ import annotations
-import asyncio
-import logging
+import asyncio, logging
 from typing import Optional, TYPE_CHECKING
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError, TelegramServerError

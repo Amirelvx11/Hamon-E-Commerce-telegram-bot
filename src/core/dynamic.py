@@ -4,7 +4,7 @@ Dynamic Configuration Manager
 - optimized for async dynamic architecture
 """
 import asyncio, json, logging
-from dataclasses import dataclass, field    
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Set

@@ -9,13 +9,13 @@ from aiogram.types import Message, CallbackQuery
 from src.core.session import SessionManager
 from src.services.api import APIService
 from src.services.exceptions import APIResponseError, APIValidationError
-from src.utils.keyboards import KeyboardFactory
 from src.config.callbacks import ServiceCallback, REPLY_BUTTON_TO_CALLBACK_ACTION
 from src.config.enums import ComplaintType
+from src.handlers.helpers import _edit_or_respond , _ensure_authenticated, _prepare_for_processing, _start_fsm_flow
+from src.utils.keyboards import KeyboardFactory
 from src.utils.validators import Validators
 from src.utils.messages import get_message
 from src.utils.formatters import Formatters
-from src.handlers.helpers import _edit_or_respond , _ensure_authenticated, _prepare_for_processing, _start_fsm_flow
 
 logger = logging.getLogger(__name__)
 

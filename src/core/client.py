@@ -1,9 +1,9 @@
 """Asynchronous API Client — resilient, cached, dynamic-ready"""
 import asyncio, logging, json, aiohttp, hashlib
-from aiohttp import ClientTimeout, ClientError
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
 from datetime import datetime
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+from aiohttp import ClientTimeout, ClientError
 from src.core.cache import CacheManager
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,5 @@
 """API Service - Handles all external API interactions."""
 import logging, asyncio, aiohttp
-from datetime import datetime
 from pydantic import ValidationError, BaseModel
 from src.config.enums import ComplaintType
 from src.config.settings import Settings

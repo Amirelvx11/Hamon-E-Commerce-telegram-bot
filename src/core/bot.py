@@ -3,8 +3,7 @@ Bot Manager — Central lifecycle orchestrator for all bot components.
 Supports hot dynamic configuration reloads, background maintenance,
 and resilient broadcast mechanisms.
 """
-import asyncio
-import logging
+import asyncio, logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from aiogram import Bot, Dispatcher
@@ -135,10 +134,12 @@ class BotManager:
             logger.warning(f"Bot identity check failed: {e}")
         return bot
 
-    async def _init_background_tasks(self, 
-                                    sessions: SessionManager,
-                                    notifications: NotificationService) -> BackgroundTasks:
-        """Start session cleanup task."""
+    async def _init_background_tasks(
+            self, 
+            sessions: SessionManager,
+            notifications: NotificationService
+            ) -> BackgroundTasks:
+        """Start session cleanup task(Background tasks)."""
         tasks = BackgroundTasks(sessions, notifications)
         await tasks.start()
         logger.info("Session cleanup task started.")

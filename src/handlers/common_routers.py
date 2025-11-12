@@ -5,10 +5,10 @@ Handles: start, menu, help, cancel, logout & admin commands
 import logging
 from typing import Union
 from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import Message, CallbackQuery
 from src.config.settings import Settings
 from src.config.callbacks import MenuCallback, AuthCallback
 from src.core.session import SessionManager

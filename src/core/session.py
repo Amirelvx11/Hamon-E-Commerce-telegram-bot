@@ -1,6 +1,5 @@
 """ Session management layer - uses cache for persistence """
-import logging
-import asyncio
+import asyncio, logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, AsyncGenerator
 from aiogram.fsm.storage.redis import RedisStorage

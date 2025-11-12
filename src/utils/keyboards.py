@@ -14,7 +14,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from src.config.callbacks import MenuCallback, AuthCallback, OrderCallback, ServiceCallback, TrackCallback
 from src.config.enums import ComplaintType
 from src.models.user import UserSession
-from src.models.domain import Order
 from src.utils.messages import get_message
 
 class KeyboardFactory:

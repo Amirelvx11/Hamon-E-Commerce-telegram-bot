@@ -1,6 +1,5 @@
 """ Centralized message templates with formatting support """
 import logging
-
 logger = logging.getLogger(__name__)
 
 class MESSAGES:

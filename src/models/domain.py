@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from datetime import datetime
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field, field_validator, computed_field, AliasChoices
 
 def clean_numeric_string(v: Any) -> Optional[str]:
