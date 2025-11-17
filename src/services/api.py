@@ -36,7 +36,7 @@ class APIService:
             response = await self.client.request(method, endpoint_url, **kwargs)
             if not response.success:
                 if response.status in {401, 403}:
-                    raise APIAuthenticationError(f"Authentication failed for {endpoint_url}. Detail: {response.error or "API AUTHENTICATION ERROR"}")
+                    raise APIAuthenticationError(f"Authentication failed for {endpoint_url}. Detail: {response.error or 'API AUTHENTICATION ERROR'}")
                 raise APIResponseError(status_code=response.status, error_detail=response.error)
             
             payload = response.data or {}
