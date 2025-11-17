@@ -54,7 +54,6 @@ class CacheManager:
                 )
                 self.redis = aioredis.Redis(connection_pool=self.pool)
                 await self.redis.ping()
-                logger.info("Redis Cache module connected")
                 return
             except Exception as e:
                 if attempt == 2:
