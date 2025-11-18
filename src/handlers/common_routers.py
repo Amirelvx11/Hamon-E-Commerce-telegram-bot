@@ -104,37 +104,46 @@ def prepare_router(
     @router.callback_query(AuthCallback.filter(F.action == "logout_prompt"))
     @router.message(F.text == "🚪 خروج از حساب")
     async def handle_logout(event: Union[CallbackQuery, Message], state: FSMContext):
+        """Unified logout handler. Guarantees a clean UI with a single final message."""
         msg = event.message if isinstance(event, CallbackQuery) else event
         chat_id = msg.chat.id
-        user_id = msg.from_user.id
+        user_id = event.from_user.id
 
+        await state.clear()
         await session_manager.cleanup_messages(msg.bot, chat_id)
 
+        if isinstance(event, Message):
+            try:
+                await event.delete()
+            except TelegramBadRequest:
+                pass
+
         async with session_manager.get_session(chat_id, user_id) as session:
-            if not session.is_authenticated:
-                if isinstance(event, CallbackQuery):
-                    await event.answer(get_message("not_authenticated"), show_alert=True)
-                    return
-                else:
-                    sent = await _edit_or_respond(
-                        event,
-                        get_message("no_logout"),
-                        KeyboardFactory.cancel_inline()
-                    )
-                    await session_manager.track_message(chat_id, sent.message_id)
-                    return
-            
-        await state.clear()
-        await session_manager.logout(chat_id) 
+            is_auth = session.is_authenticated
 
-        placeholder = await msg.answer(get_message("use_menu"), reply_markup=KeyboardFactory.main_reply_menu(is_auth=False))
-        await session_manager.track_message(chat_id, placeholder.message_id)
+        if not is_auth:
+            if isinstance(event, CallbackQuery):
+                await event.answer(get_message("not_authenticated"), show_alert=True)
+                await _edit_or_respond(event, get_message("no_logout"), KeyboardFactory.main_inline_menu(is_auth=False))
+            else:
+                sent = await msg.answer(get_message("no_logout"), reply_markup=KeyboardFactory.main_inline_menu(is_auth=False))
+                await session_manager.track_message(chat_id, sent.message_id)
+            return
 
-        sent = await _edit_or_respond(event, get_message("logout_success"), KeyboardFactory.main_inline_menu(is_auth=False))
-        await session_manager.track_message(chat_id, sent.message_id)
+        await session_manager.logout(chat_id)
 
+        reply_placeholder = await msg.answer(get_message("use_menu"), reply_markup=KeyboardFactory.main_reply_menu(is_auth=False))
+        await session_manager.track_message(chat_id, reply_placeholder.message_id)
+        
         if isinstance(event, CallbackQuery):
-            await event.answer("🟢 با موفقیت خارج شدید.") 
+            final_msg = await _edit_or_respond(event, get_message("logout_success"), KeyboardFactory.main_inline_menu(is_auth=False))
+            await event.answer("🟢 با موفقیت خارج شدید.")
+        else:
+            final_msg = await msg.answer(get_message("logout_success"), reply_markup=KeyboardFactory.main_inline_menu(is_auth=False))
+        
+        await session_manager.cleanup_messages(msg.bot, chat_id)
+        await session_manager.track_message(chat_id, reply_placeholder.message_id)
+        await session_manager.track_message(chat_id, final_msg.message_id)
         
     @router.message(Command("cancel"))
     @router.callback_query(MenuCallback.filter(F.target == "cancel"))
