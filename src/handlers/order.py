@@ -74,9 +74,8 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
             await state.clear()
 
         except APIResponseError as e:
-            msg = get_message("order_not_found") if e.status_code == 404 else get_message("order_search_error")
             await session_manager.cleanup_messages(message.bot, message.chat.id)
-            bot_message = await _edit_or_respond(bot_message, msg, KeyboardFactory.cancel_inline())
+            bot_message = await _edit_or_respond(bot_message, get_message("order_not_found"), KeyboardFactory.cancel_inline())
             await session_manager.track_message(message.chat.id, bot_message.message_id)
         except APIValidationError as e:
             await _edit_or_respond(bot_message, get_message("data_processing_error"), reply_markup=KeyboardFactory.cancel_inline())
@@ -107,9 +106,8 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
             await state.clear()
 
         except APIResponseError as e:
-            msg = get_message("order_not_found") if e.status_code == 404 else get_message("order_search_error")
             await session_manager.cleanup_messages(message.bot, message.chat.id)
-            bot_message = await _edit_or_respond(bot_message, msg, KeyboardFactory.cancel_inline())
+            bot_message = await _edit_or_respond(bot_message, get_message("order_not_found"), KeyboardFactory.cancel_inline())
             await session_manager.track_message(message.chat.id, bot_message.message_id)
         except Exception as e:
             logger.exception(f"Serial lookup error: {e} in chat id:{message.chat.id}")
@@ -141,8 +139,7 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
             await _edit_or_respond(callback.message, text, keyboard)
             
         except APIResponseError as e:
-            msg = get_message("order_not_found") if e.status_code == 404 else get_message("order_search_error")
-            await _edit_or_respond(callback.message, msg, KeyboardFactory.cancel_inline())
+            await _edit_or_respond(callback.message, get_message("order_not_found"), KeyboardFactory.cancel_inline())
         except Exception as e:
             logger.exception(f"Refresh exception for order {order_number}: {e}")
             await _edit_or_respond(callback.message, get_message("refresh_error"), KeyboardFactory.cancel_inline())
