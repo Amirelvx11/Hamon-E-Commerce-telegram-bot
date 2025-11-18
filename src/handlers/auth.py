@@ -83,7 +83,8 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
 
             reply_placeholder = await message.answer("😃 ورود موفقیت آمیز!", reply_markup=reply_kb)
             await session_manager.track_message(message.chat.id, reply_placeholder.message_id)
-            await _edit_or_respond(bot_message, text, inline_kb)
+            sent = await _edit_or_respond(bot_message, text, inline_kb)
+            await session_manager.track_message(sent.chat.id, sent.message_id)
             logger.info(f"Authenticated {auth_response.name} ({auth_response.national_id}) chat={message.chat.id}")
 
         except (APIResponseError, APIValidationError) as e:
@@ -103,45 +104,46 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
         session = await _ensure_authenticated(event, session_manager)
         if not session:
             return
-
+        
         msg = event.message if isinstance(event, CallbackQuery) else event
         chat_id = msg.chat.id
             
         if isinstance(event, CallbackQuery):
             await event.answer("👤 اطلاعات ثبت شده در سیستم")
-            await session_manager.cleanup_messages(msg.bot, chat_id)
+            await session_manager.cleanup_messages(msg.bot, chat_id)    
         else:
+            await session_manager.cleanup_messages(msg.bot, chat_id)    
             try:
                 await msg.delete()
             except Exception:
                 pass
-            await session_manager.cleanup_messages(msg.bot, chat_id)
             reply_menu = KeyboardFactory.cancel_reply()
             message = await msg.answer(get_message("use_menu"), reply_markup=reply_menu)
             await session_manager.track_message(chat_id, message.message_id)
 
         placeholder = await msg.answer(get_message("loading", action="نمایش اطلاعات کاربری"))
         await session_manager.track_message(chat_id, placeholder.message_id)
-
         formatted_text, extra_buttons = Formatters.user_info(session)
         keyboard = KeyboardFactory.back_inline(is_auth=True, extra_buttons=extra_buttons)
-
-        await _edit_or_respond(placeholder, formatted_text, keyboard)
+        msg = await _edit_or_respond(placeholder, formatted_text, keyboard)
+        await session_manager.track_message(chat_id, msg.message_id)
 
     @router.callback_query(OrderCallback.filter(F.action == "orders_list"))
     @router.message(F.text == "📦 لیست سفارشات من")
     async def handle_my_orders(event: Union[CallbackQuery, Message], state: FSMContext):
-        """Display My Orders view using cached AuthResponse data."""
+        """Display My Orders section view using cached AuthResponse data."""
         session = await _ensure_authenticated(event, session_manager)
         if not session:
             return
-
+        
         msg = event.message if isinstance(event, CallbackQuery) else event
         chat_id = msg.chat.id
-        await session_manager.cleanup_messages(msg.bot, chat_id)
+        
         if isinstance(event, CallbackQuery):
             await event.answer("💳 سفارشات فعال در سیستم")
+            await session_manager.cleanup_messages(msg.bot, chat_id)
         else:
+            await session_manager.cleanup_messages(msg.bot, chat_id)
             try:
                 await msg.delete()
             except Exception:
@@ -150,13 +152,15 @@ def prepare_router(api_service: APIService, session_manager: SessionManager) -> 
             message = await msg.answer(get_message("use_menu"), reply_markup=reply_menu)
             await session_manager.track_message(chat_id, message.message_id)
 
-        placeholder = await msg.answer(get_message("loading", action="دریافت لیست سفارشات"))
-        await session_manager.track_message(chat_id, placeholder.message_id)
-              
         formatted_text, _ = Formatters.my_orders_summary(session)
         keyboard = KeyboardFactory.my_orders_actions(session)
+        if isinstance(event, CallbackQuery):
+            sent_message = await _edit_or_respond(event, formatted_text, keyboard)
+        else:
+            placeholder = await msg.answer(get_message("loading", action="دریافت لیست سفارشات"))
+            await session_manager.track_message(chat_id, placeholder.message_id)
+            sent_message = await _edit_or_respond(placeholder, formatted_text, keyboard)
 
-        await _edit_or_respond(placeholder, formatted_text, keyboard)
-
+        await session_manager.track_message(chat_id, sent_message.message_id)
 
     return router

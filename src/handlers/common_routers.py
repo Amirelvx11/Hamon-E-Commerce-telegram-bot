@@ -119,7 +119,7 @@ def prepare_router(
                     sent = await _edit_or_respond(
                         event,
                         get_message("no_logout"),
-                        KeyboardFactory.main_inline_menu(is_auth=False)
+                        KeyboardFactory.cancel_inline()
                     )
                     await session_manager.track_message(chat_id, sent.message_id)
                     return
@@ -127,15 +127,10 @@ def prepare_router(
         await state.clear()
         await session_manager.logout(chat_id) 
 
-        reply_menu = KeyboardFactory.main_reply_menu(is_auth=False)
-        inline_menu = KeyboardFactory.main_inline_menu(is_auth=False)
-        use_menu_text = get_message("use_menu")
-        success_text = get_message("logout_success")  
-
-        placeholder = await msg.answer(use_menu_text, reply_markup=reply_menu)
+        placeholder = await msg.answer(get_message("use_menu"), reply_markup=KeyboardFactory.main_reply_menu(is_auth=False))
         await session_manager.track_message(chat_id, placeholder.message_id)
 
-        sent = await _edit_or_respond(event, success_text, inline_menu)
+        sent = await _edit_or_respond(event, get_message("logout_success"), KeyboardFactory.main_inline_menu(is_auth=False))
         await session_manager.track_message(chat_id, sent.message_id)
 
         if isinstance(event, CallbackQuery):
