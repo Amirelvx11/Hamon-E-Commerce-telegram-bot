@@ -73,7 +73,6 @@ class Settings:
             "submit_complaint": os.getenv("SERVER_URL_COMPLAINT"),
             "submit_repair": os.getenv("SERVER_URL_REPAIR")
         }
-
         return cls(
             telegram_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
             auth_token=os.getenv("AUTH_TOKEN", ""),
@@ -85,12 +84,12 @@ class Settings:
             enable_dynamic_config=os.getenv("ENABLE_DYNAMIC_CONFIG", "true").lower() in ["true", "1"],
             cache_ttl_seconds=int(os.getenv("CACHE_TTL", "300")),
             cache_max_size=int(os.getenv("CACHE_SIZE", "1000")),
-            api_timeout=int(os.getenv("API_TIMEOUT", "30")),
-            api_max_retries=int(os.getenv("API_RETRIES", "3")),
+            session_timeout_minutes=int(os.getenv("SESSION_TIMEOUT", "60")),
             max_requests_hour=int(os.getenv("MAX_REQUESTS_HOUR", "100")),
             max_requests_day=int(os.getenv("MAX_REQUESTS_DAY", "1000")),
-            session_timeout_minutes=int(os.getenv("SESSION_TIMEOUT", "60")),
             max_sessions_per_user=int(os.getenv("MAX_SESSIONS", "3")),
+            api_timeout=int(os.getenv("API_TIMEOUT", "30")),
+            api_max_retries=int(os.getenv("API_RETRIES", "3")),
             support_phone=os.getenv("SUPPORT_PHONE"),
             website_url=os.getenv("WEBSITE_URL"),
             admin_chat_id=os.getenv("ADMIN_CHAT_ID")
