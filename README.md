@@ -5,6 +5,27 @@ A production-ready Telegram bot backend built with **Python 3.11** and **Aiogram
 
 
 
+## Table of Contents
+
+Here's how I've organized my README:
+- [Features I Built](#features)
+- [Perequisites](#Perequisites)
+- [How to Install](#installation)
+- [Configuration](#Configuration)
+- [Run Locally](#Development)
+- [File Structure](#File_Structure)
+- [Monitoring](#Monitoring)
+- [Tech Stack](#Tech_Stack)
+- [Security](#Security)
+- [My Toolkit](#My_Toolkit)
+- [How to Contribute](#contributing)
+- [Contact Us](#Connect_With_Me)
+- [License Information](#license)
+
+---
+
+
+
 ## ✨ Features
 
 Here's what you can do with our app:
@@ -21,14 +42,8 @@ Here's what you can do with our app:
 
 
 
-
-## 🚀 Quick Start
-
+## 🛠️ Prerequisites
 Want to get your Telegram Bot up and running fast? Just follow these easy steps, and you'll be chatting in no time!
-
-*Let's get started!*
-
-
 
 ### What You'll Need Before We Get Started
 
@@ -38,10 +53,11 @@ Before diving in, let's make sure you have everything you need. Think of these a
 *   **Telegram Bot Token:** This is your application's secret key to control your Telegram bot. You can get it by talking to BotFather on Telegram (find them here: https://t.me/botfather). It's like a password that lets the application send messages and do other cool things with your bot.
 *   **API Server Login Info (like an auth token):** If the application needs to get information from another computer (an API server), you'll probably need a username and password, or maybe a special token. This is just to make sure you're allowed to use the server and access the data.
 *   **A Good Internet Connection:** Since the application might need to download files or talk to other computers online, a stable internet connection is important. If you're having internet troubles, a VPN or Cloudflare proxy *could* help, but you probably won't need them.
+---
 
 
 
-### Installation
+## Installation
 
 Let's get this e-commerce Telegram bot up and running!
 
@@ -91,22 +107,11 @@ docker-compose logs -f bot
 
 This command shows you the bot's log messages in real-time. If you see any errors, this is the place to start troubleshooting.
 
+---
 
 
 
-### 📁 Project Structure
-
-Let's take a peek inside the `src/` folder to see how everything is organized. Think of it like the different rooms in a house, each with a special job!
-
-- `config/`: This folder is like the bot's settings panel. It holds all the important settings and configs, special lists (we call them "enums"), and callback functions using aiogram callback, so the bot knows exactly how to behave. It's like the instruction manual for your bot.
-- `core/`: This is where the real magic happens! Inside, you'll find the Bot Manager (the thing that keeps the bot running smoothly), the connection to Redis (a super-speedy database), Session and Cache Manager, API client (which lets the bot talk to other services) and also manages configurations, loading them dynamically from files or using default settings.
-- `services/`: This folder is all about communication. It contains the code that lets the bot talk to other programs (like APIs) and send out notifications. It's how the bot gets information, shares it with users in Telegram, and even alerts the admins!
-- `handlers/`: Think of this as the bot's brain. It figures out what to do with every message and button press (callback) it receives. Then, it sends the information to the right services, formats it nicely for the user, and more.
-- `utils/`: This folder is like a toolbox filled with helpful gadgets. You'll find reusable tools and templates that are used throughout the project, like message builders, formatters, keyboard tools for creating interactive buttons (both inline and reply keyboards), and even a validator to make sure everything is correct.
-
-
-
-### ⚙️ Configuration
+## ⚙️ Configuration
 
 Let's set up the important stuff! This section guides you through configuring the app using environment variables. Think of these like settings that tell the app how to behave.
 
@@ -208,69 +213,125 @@ docker-compose down -v && docker-compose up -d --build
 ```
 This command stops and removes the existing containers and volumes (`docker-compose down -v`), then rebuilds the Docker image and starts the bot again (`docker-compose up -d --build`). Use this if you've made changes to the bot's code or configuration.
 
+---
 
 
-### 🧪 Development
-#### Local Setup
 
-Let's get this project up and running on your computer! Here's a simple guide to setting things up:
+## 🧪 Development (Local Setup)
 
-First, we'll create a special, isolated space for our project to live in. This is called a virtual environment. It helps keep our project's dependencies separate from other Python projects on your system. Open your terminal or command prompt and follow these steps:
+Let's get this project running on your own computer! This guide will walk you through setting everything up step-by-step.
+
+First, we're going to create a special, isolated area for our project. It's called a "virtual environment" and it helps prevent conflicts with other Python projects you might have on your computer.
+
+Open your computer's terminal or command prompt. Then, carefully follow these instructions:
 
 ```bash
-# Create a virtual environment (named 'venv' here)
+# Create a virtual environment - Make sure you have Python 3.10 or higher installed.
 python -m venv venv
 
-# Activate the virtual environment (this tells your terminal to use this environment)
+# Activate the virtual environment.
 source venv/bin/activate
 
-# Install all the necessary packages (listed in the 'requirements.txt' file)
+# Install all the required packages.
 pip install -r requirements.txt
 
-# Now, you're all set! Run the bot:
+# Now you're ready to go! Start the bot:
 python main.py
 ```
 
-**Explanation:**
+That's all there is to it! Give it a try to make sure it works correctly. You should now have the project up and running locally. Have fun!
 
-*   `python -m venv venv`: This command creates a new virtual environment in a folder named `venv`. You can name it something else if you like!
-*   `source venv/bin/activate`: This command activates the virtual environment.  You'll usually see the environment name (like `(venv)`) at the beginning of your terminal prompt to show you it's active.
-*   `pip install -r requirements.txt`:  This command uses `pip` (the Python package installer) to install all the libraries and tools listed in the `requirements.txt` file. These are the things our project needs to run.
-*   `python main.py`: This command finally starts the bot!
-
-That's it! You should now have the project running locally.
+---
 
 
+
+## My Project Structure
+
+Here's a simple overview of how the code is structured. It's designed to be easy to navigate:
+
+```
+telegram-bot/
+├── src/
+│   ├── config/         # Configuration, enums, and callback definitions
+│   ├── core/           # Core systems (session manager, cache, dispatcher build and etc)
+│   ├── handlers/       # Aiogram routers for commands, callbacks, workflows
+│   ├── models/         # Pydantic models for API responses, orders, sessions
+│   ├── services/       # External API integration + Telegram notification service
+│   ├── utils/          # Unified formatters, keyboard factory, helper functions
+├── main.py             # Entrypoint — builds Dispatcher, starts polling/webhook
+├── tests/              # Unit/integration tests (pytest configured)
+├── bot.log             # Runtime logs
+├── .env                # Enviroment Variables
+├── docker-compose.yml  # Compose for Containerization
+└── Dockerfile          # Dockerization
+```
 
 ### File Organization
 
-Let's break down the project's file structure. This helps you quickly find what you're looking for!
+Let's take a closer look at how the project is organized! This will help you quickly find the files you need and understand where things are located.
 
-*   **`src` Directory:** This is where all the main code lives.
-    *   **`Config`:**  `/src/config/` - Contains configuration files. Think of these as settings for your app.
-    *   **`Core`:** `/src/core/` - Holds the essential, fundamental code that makes the application run. 
-    *   **`Handlers`:** `/src/handlers/` - Manages different parts of the app, like dealing with user requests or events.
-    *   **`Services`:** `/src/services/` - Contains reusable components that do specific jobs, like connecting to a database or sending emails.
-    *   **`Utils`:** `/src/utils/` -  Helpful utility functions or classes that are used throughout the project. They perform common tasks.
+*   **`src` Directory:** This is where all the important code lives. Think of it as the heart of the project; all the important logic lives here.
+    *   **`Config`:** `/src/config/`
+        *   `settings.py`: Loads environment variables and manages dynamic configuration reloading.
+        *   `callbacks.py`: Contains structured `CallbackData` factories (like `MenuCallback`, `AuthCallback`, etc.). These help manage button presses(inline-buttons) in the Telegram bot.
+        *   `enums.py`: Defines business-related enums (like `UserState`, `WorkflowSteps`, `ComplaintType`).  Enums help make the code more readable and prevent errors.
+        *   **Purpose:** Defines environment configuration, constants, and all callback route signatures. It's where you set up how your bot behaves.
+    *   **`Core`:** `/src/core/` - This directory contains the bot's engine, state management, dynamic configuration, HTTP client, and caching.
+        *   `bot.py`: Builds the `Dispatcher`, loads routers, connects services, and manages the bot's lifecycle. This file is essential for starting and running the bot.
+        *   `cache.py`: Manages the asynchronous Redis cache (for JSON serialization, stats, and invalidation). Caching makes the bot faster by storing frequently accessed data.
+        *   `session.py`: Implements a Redis-backed `SessionManager` for handling FSM (Finite State Machine), authentication state, message tracking, rate limiting, and cleanup.  Sessions are crucial for managing conversations with users.
+        *   `client.py`: Defines the HTTP client module for base client and server configurations and interactions.
+        *   `dynamic.py`: Handles configuration reloading and runtime parameter updates from environment variables or an API. This allows you to change the bot's behavior without restarting it.
+        *   **Purpose:** This is the central hub for bot initialization, state persistence, caching, and dynamic runtime control.
+    *   **`Handlers`:** `/src/handlers/` - This directory contains the logic for handling different user interactions.
+        *   `common_router.py`: Handles common commands like start, cancel, logout, and displaying the main menu.
+        *   `auth_router.py`: Manages authentication using a national ID, displaying user info, and managing orders.
+        *   `order_router.py`: Implements the order search and order detail flow.
+        *   `support_router.py`: Handles complaint submissions and repair requests.
+        *   **Purpose:** This is the routing layer, containing message/command/callback logic and business workflows. It determines how the bot responds to different user actions.
+    *   **`Models`:** `/src/models/`
+        *   `domain.py`: Defines the `Order` model, which is validated based on data from the API. Also includes `AuthResponse` and `SubmissionResponse` models.
+        *   `user.py`: Defines the `UserSession` model for in-memory and Redis serialization. This stores user-specific data during a session.
+        *   **Purpose:** Enforces strict Pydantic validation for API and state data. This helps ensure data consistency and prevents errors.
+    *   **`Services`:** `/src/services/`
+        *   `api.py`: Contains the `APIService` for calling configured endpoints(based on our methods) and parse the response and pass it to handlers, with proper error handling and exceptions.
+        *   `notifications.py`: Handles Telegram notifications (order status, session expired, rate limit, broadcast messages and maintenance mode).
+        *   **Purpose:** Manages all external interactions, including HTTP API calls(make request and parse response) and sending messages to Telegram.
+    *   **`Utils`:** `/src/utils/`
+        *   `formatters.py`: Provides functions for formatting user profiles, order lists/details into displayable text and also include repar and complaint request's submission response's.
+        *   `keyboards.py`: Builds inline and reply keyboards with optional extra buttons, making it easier to create interactive bot interfaces.
+        *   `validators.py`: Input validator module for order, nid and other text input's user send to bot.
+        *   `messages.py`: Retrieves message templates based on keys - includes main and more often used messages.
+        *   **Purpose:** This is a pure helper layer, containing formatting and UI elements that can be reused by handlers and services.
 
 *   **`tests` Directory:**
-    *   This directory contains all the test modules that verify if the code works as expected. You'll also find `pytest.ini` here, which configures how the tests run.
+    *   This directory holds all the tests that check if the code is working correctly. Testing is super important!
+    *   You'll also find `pytest.ini` here. This file configures how the tests are run, so you can customize the testing process to fit your needs. 
 
-*   **`main.py`:** This is the main entry point of the application.  It's the first file that runs when you start the program.
+*   **`main.py`:** This is the main entry point of the application. It's the first file that runs when you start the program. It's like the front door of the app – everything starts here!
+
+
+---
 
 
 
-### 📊 Monitoring
-We're always watching to make sure everything is running smoothly. Here's how we do it:
+## 📊 Monitoring
 
-*   **Basic Logging:** We keep a record of important things that happen, like when something works or when there's an error. We use simple labels like `INFO` for good things and `ERROR` for problems.
-*   **Admin Alerts:** If something really bad happens, like a major error that could break things, the admins get a message right away so they can fix it.
-*   **Health Checks:** You can check if the bot is working correctly by visiting a special link (also known as an API endpoint). It's like taking the bot's pulse to see if it's healthy.
+We're always keeping an eye on things to make sure everything is running smoothly! Here's how we monitor the bot:
 
-### 🛠️ Tech Stack
-Here's a simple explanation of the tools and technologies we use to build and run this bot:
+*   **Basic Logging:** We keep a record of important events, like when the bot interacts with something or if an error pops up. We use labels like `INFO` (for general info), `WARNING` (for potential problems), and `ERROR` (for when something goes wrong).
+*   **Health Checks:** We also have health checks to monitor active sessions and cache performance (how often the bot finds what it needs in its quick-access memory), use stats or admin commands within the bot to check its overall status. Just remember to set your admin chat ID in the `.env` file so you can use these features!
+*   **Admin Alerts:** If something serious happens that could cause problems, the admins get notified immediately. This helps them jump in and fix things quickly.
 
-| Component   | Tool          |
+---
+
+
+
+## 🛠️ Tech Stack
+
+Let's break down the tools and technologies that power this bot. Think of it as a peek under the hood!
+
+| **Component**   | **Tool**          |
 | :---------- | :------------ |
 | Framework   | Aiogram 3.x   |
 | Runtime     | Python 3.11   |
@@ -278,37 +339,64 @@ Here's a simple explanation of the tools and technologies we use to build and ru
 | HTTP Client | aiohttp       |
 | Container   | Docker        |
 
-*   **Framework:** Aiogram is what we use to create the Telegram bot's structure and features. Think of it as the bot's building blocks.
-*   **Runtime:** Python is the programming language the bot uses to understand instructions and do its job. It's how we tell the bot what to do.
-*   **Cache:** Redis is a super-fast way to store and grab data. It helps the bot remember things quickly so it doesn't have to look them up every time.
-*   **HTTP Client:** aiohttp is like a web browser for the bot. It lets the bot talk to other websites and online services to get information or do things.
-*   **Container:** Docker packages everything the bot needs into one neat little box, so it can run smoothly on any computer without problems.
+*   **Framework:** We use Aiogram 3.x as the framework. It provides the structure and tools we need to build the Telegram bot. You can think of it as the foundation upon which the bot's features are built.
+*   **Runtime:** The bot is powered by Python 3.11. Python is the language that lets us write instructions the bot can understand and follow. It's how we tell the bot what actions to perform.
+*   **Cache:**  To help the bot remember things quickly, we use Redis 7.x. Redis is a super-fast data storage system. It allows the bot to quickly access frequently used information, making it more responsive.
+*   **HTTP Client:** The bot uses `aiohttp` to communicate with other websites and services on the internet. It's like giving the bot its own web browser, allowing it to retrieve data or interact with online APIs.
+*   **Container:**  We use Docker to package the bot and all its dependencies into a container.  This ensures the bot runs consistently, no matter where it's deployed.  It's like putting everything the bot needs into a neat package, so it works the same on any computer.
 
-### 🔒 Security
+
+
+## 🔒 Security
 Keeping your data safe is super important to us. Here's how we protect it:
 
 *   **Environment Variables:** We store sensitive info (like secret passwords or keys) in a safe place called environment variables, so they're not directly in the code.
 *   **Input Validation:** We carefully check all the information you send to the bot to make sure it's safe and prevent bad guys from trying to trick the bot.
 *   **Session Encryption:** We scramble all the messages and data sent between you and the bot so no one can eavesdrop or steal your information.
 
-### 📝 License
-This project is open-source, which means it's available for anyone to use, change, and share, under the MIT License. You can find the full details in the `LICENSE` file.
 
-### 🤝 Contributing
-Want to help us make the bot even better? Awesome! Here's how you can contribute:
 
-*   **Fork:** Create your own copy of the project (called a "fork") on GitHub.
-*   **Branch:** Make a new branch in your forked copy where you'll make your changes. This keeps your changes separate from the main project until they're ready.
-*   **Pull Request:** When you're done with your changes, submit a "pull request" to the main project. This lets us review your changes and merge them into the main bot.
 
-To make sure your code is a good fit, please follow these guidelines:
+## 🛠️ My Toolkit
 
-*   Follow PEP 8 style guidelines (this makes the code look neat and consistent).
-*   Include tests (to make sure your changes work as expected and don't break anything).
-*   Write clear documentation (so other developers can understand what your code does and how it works).
+**Languages:**
+<p align="left">
+ <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
 
-### 📞 Support
-Need help or have questions? We're here for you!
+**DevOps:**
+<p align="left">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions" />
+</p>
 
-*   **Issues:** [GitHub Issues](https://github.com/Amirelvx11/Hamon-E-Commerce-telegram-bot/issues) - Report bugs or ask questions here.
-*   **GitHub:** [@Amirelvx11](https://github.com/Amirelvx11) - You can also reach out to me directly on GitHub.
+
+
+
+## 🤝 Contributing
+
+I welcome contributions! Here's how you can help improve my bot:
+
+1. **Fork** my repository
+2. Create your **Feature Branch** `git checkout -b feature/your-idea`
+3. Commit your changes `git commit -m 'Add your feature'`
+4. Push to branch `git push origin feature/your-idea`
+5. Open a **Pull Request**
+
+I review all PRs and appreciate your help!
+
+
+
+## 🔗 Connect With Me
+Got questions or need some help? No problem! Here's how you can reach out:
+
+*   **Report Issues:** Use [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Amirelvx11/Hamon-E-Commerce-telegram-bot/issues) - to report any bugs you find or ask questions.
+*   **GitHub Profile:** [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Amirelvx11) - Feel free to reach out directly!
+*   **LinkedIn:** [![linkedin](https://img.shields.io/badge/linkedin-0A66C2?style=for-the-badge)](https://www.linkedin.com/in/amir-jamshidi-79b3a0337) - Connect with me on LinkedIn!
+
+
+
+## 📝 License
+
+I've released this project under the [MIT License](LICENSE.md).  
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
