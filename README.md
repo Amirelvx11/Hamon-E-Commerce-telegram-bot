@@ -1,6 +1,7 @@
 # 🤖 Telegram Bot Backend
-A production-ready Telegram bot backend built with **Python 3.11** and **Aiogram 3.x**. This bot is designed for authentication, order tracking, and automating customer support tasks such as repair requests for POS machine devices and complaint submissions.
+A production-ready Telegram bot backend built with **Python 3.11** and **Aiogram 3.x**(Fully dockerized). This bot is designed for authentication, order tracking, and automating customer service and supports tasks such as repair requests for POS machine devices and complaint submissions.
 
+**Version:** 1.0.0  **License:** MIT  **Maintainer:** Amir Jamshidi
 ---
 
 
@@ -9,24 +10,24 @@ A production-ready Telegram bot backend built with **Python 3.11** and **Aiogram
 
 Here's how I've organized my README:
 - [Features I Built](#features)
-- [Perequisites](#Perequisites)
+- [Prerequisites](#prerequisites)
 - [How to Install](#installation)
-- [Configuration](#Configuration)
-- [Run Locally](#Development)
-- [File Structure](#File_Structure)
-- [Monitoring](#Monitoring)
-- [Tech Stack](#Tech_Stack)
-- [Security](#Security)
-- [My Toolkit](#My_Toolkit)
+- [Configuration](#configuration)
+- [Run Locally](#development)
+- [File Structure](#project-structure)
+- [Monitoring](#monitoring)
+- [Tech Stack](#tech-stack)
+- [Security](#security)
+- [Toolkits](#toolkits)
 - [How to Contribute](#contributing)
-- [Contact Us](#Connect_With_Me)
+- [Contact Us](#contact-with-me)
 - [License Information](#license)
 
 ---
 
 
 
-## ✨ Features
+## Features
 
 Here's what you can do with our app:
 
@@ -42,14 +43,14 @@ Here's what you can do with our app:
 
 
 
-## 🛠️ Prerequisites
-Want to get your Telegram Bot up and running fast? Just follow these easy steps, and you'll be chatting in no time!
+## Prerequisites
+just Follow this steps to run this project without any bug or error.
 
 ### What You'll Need Before We Get Started
 
 Before diving in, let's make sure you have everything you need. Think of these as the essential tools and credentials to get our application up and running:
 
-*   **Docker and Docker Compose:** These are like special boxes that allow the application to run smoothly, without messing with the rest of your computer. It's like giving the app its own little playground! If you don't have these yet, you'll need to download and install them. Docker creates this isolated space, or "container", for the application.
+*   **Docker and Docker Compose:** These are like special boxes that allow the application to run smoothly, without messing with the rest of your computer. It's like giving the app its own little playground! If you don't have these yet, you'll need to download and install them. Docker provides isolation and reproducibility for deployment.
 *   **Telegram Bot Token:** This is your application's secret key to control your Telegram bot. You can get it by talking to BotFather on Telegram (find them here: https://t.me/botfather). It's like a password that lets the application send messages and do other cool things with your bot.
 *   **API Server Login Info (like an auth token):** If the application needs to get information from another computer (an API server), you'll probably need a username and password, or maybe a special token. This is just to make sure you're allowed to use the server and access the data.
 *   **A Good Internet Connection:** Since the application might need to download files or talk to other computers online, a stable internet connection is important. If you're having internet troubles, a VPN or Cloudflare proxy *could* help, but you probably won't need them.
@@ -111,7 +112,7 @@ This command shows you the bot's log messages in real-time. If you see any error
 
 
 
-## ⚙️ Configuration
+## Configuration
 
 Let's set up the important stuff! This section guides you through configuring the app using environment variables. Think of these like settings that tell the app how to behave.
 
@@ -217,8 +218,8 @@ This command stops and removes the existing containers and volumes (`docker-comp
 
 
 
-## 🧪 Development (Local Setup)
-
+## Development
+### Local Setup
 Let's get this project running on your own computer! This guide will walk you through setting everything up step-by-step.
 
 First, we're going to create a special, isolated area for our project. It's called a "virtual environment" and it helps prevent conflicts with other Python projects you might have on your computer.
@@ -245,7 +246,7 @@ That's all there is to it! Give it a try to make sure it works correctly. You sh
 
 
 
-## My Project Structure
+## Project Structure
 
 Here's a simple overview of how the code is structured. It's designed to be easy to navigate:
 
@@ -280,7 +281,7 @@ Let's take a closer look at how the project is organized! This will help you qui
         *   `bot.py`: Builds the `Dispatcher`, loads routers, connects services, and manages the bot's lifecycle. This file is essential for starting and running the bot.
         *   `cache.py`: Manages the asynchronous Redis cache (for JSON serialization, stats, and invalidation). Caching makes the bot faster by storing frequently accessed data.
         *   `session.py`: Implements a Redis-backed `SessionManager` for handling FSM (Finite State Machine), authentication state, message tracking, rate limiting, and cleanup.  Sessions are crucial for managing conversations with users.
-        *   `client.py`: Defines the HTTP client module for base client and server configurations and interactions.
+        *   `client.py`: Defines the asynchronous APIClient with caching, auto‑retry, and dynamic config support.
         *   `dynamic.py`: Handles configuration reloading and runtime parameter updates from environment variables or an API. This allows you to change the bot's behavior without restarting it.
         *   **Purpose:** This is the central hub for bot initialization, state persistence, caching, and dynamic runtime control.
     *   **`Handlers`:** `/src/handlers/` - This directory contains the logic for handling different user interactions.
@@ -294,7 +295,7 @@ Let's take a closer look at how the project is organized! This will help you qui
         *   `user.py`: Defines the `UserSession` model for in-memory and Redis serialization. This stores user-specific data during a session.
         *   **Purpose:** Enforces strict Pydantic validation for API and state data. This helps ensure data consistency and prevents errors.
     *   **`Services`:** `/src/services/`
-        *   `api.py`: Contains the `APIService` for calling configured endpoints(based on our methods) and parse the response and pass it to handlers, with proper error handling and exceptions.
+        *   `api.py`: Contains the `APIService` the business layer wrapping APIClient and managing endpoint calls + validation.
         *   `notifications.py`: Handles Telegram notifications (order status, session expired, rate limit, broadcast messages and maintenance mode).
         *   **Purpose:** Manages all external interactions, including HTTP API calls(make request and parse response) and sending messages to Telegram.
     *   **`Utils`:** `/src/utils/`
@@ -315,7 +316,7 @@ Let's take a closer look at how the project is organized! This will help you qui
 
 
 
-## 📊 Monitoring
+## Monitoring
 
 We're always keeping an eye on things to make sure everything is running smoothly! Here's how we monitor the bot:
 
@@ -327,7 +328,7 @@ We're always keeping an eye on things to make sure everything is running smoothl
 
 
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 Let's break down the tools and technologies that power this bot. Think of it as a peek under the hood!
 
@@ -347,7 +348,7 @@ Let's break down the tools and technologies that power this bot. Think of it as 
 
 
 
-## 🔒 Security
+## Security
 Keeping your data safe is super important to us. Here's how we protect it:
 
 *   **Environment Variables:** We store sensitive info (like secret passwords or keys) in a safe place called environment variables, so they're not directly in the code.
@@ -357,7 +358,7 @@ Keeping your data safe is super important to us. Here's how we protect it:
 
 
 
-## 🛠️ My Toolkit
+## Toolkits
 
 **Languages:**
 <p align="left">
@@ -372,7 +373,7 @@ Keeping your data safe is super important to us. Here's how we protect it:
 
 
 
-## 🤝 Contributing
+## Contributing
 
 I welcome contributions! Here's how you can help improve my bot:
 
@@ -386,7 +387,7 @@ I review all PRs and appreciate your help!
 
 
 
-## 🔗 Connect With Me
+## Contact With Me
 Got questions or need some help? No problem! Here's how you can reach out:
 
 *   **Report Issues:** Use [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Amirelvx11/Hamon-E-Commerce-telegram-bot/issues) - to report any bugs you find or ask questions.
@@ -395,7 +396,7 @@ Got questions or need some help? No problem! Here's how you can reach out:
 
 
 
-## 📝 License
+## License
 
 I've released this project under the [MIT License](LICENSE.md).  
 
