@@ -1,4 +1,4 @@
-"""API Service - Handles all external API interactions."""
+"""API Service - Handles all external API interactions - bot to server & server to bot"""
 import logging, asyncio, aiohttp
 from pydantic import ValidationError, BaseModel
 from src.config.enums import ComplaintType
