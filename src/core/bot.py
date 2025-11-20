@@ -90,10 +90,13 @@ class BotManager:
             for comp in components:
                 if not comp:
                     continue
-                if hasattr(comp, "stop"):
-                    await comp.stop()
-                elif hasattr(comp, "shutdown"):
-                    await comp.shutdown()
+                try:
+                    if hasattr(comp, "stop") and asyncio.iscoroutinefunction(comp.stop):
+                        await comp.stop()
+                    elif hasattr(comp, "shutdown") and asyncio.iscoroutinefunction(comp.shutdown):
+                        await comp.shutdown()
+                except Exception as e:
+                    logger.debug(f"Component shutdown error: {e}")
 
             logger.info("Core BotManager shutdown complete.")
         except Exception as e:
