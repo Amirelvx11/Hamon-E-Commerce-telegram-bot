@@ -12,8 +12,12 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Environment variables
 .env
+.env.*
 !.env.test
+!.env.example
 
 # Testing artifacts
 .pytest_cache/
