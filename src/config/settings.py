@@ -4,6 +4,7 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Any, ClassVar
 from threading import Lock
+from contextlib import nullcontext
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -111,7 +112,8 @@ class Settings:
         return self.server_urls.get(name)
 
     def update_from_dict(self, updates: Dict[str, Any], persist: bool = True) -> None:
-        with self._lock:
+        lock_context = self._lock if persist else nullcontext()
+        with lock_context:
             applied = {}
             for key, value in updates.items():
                 if key in self._dynamic_fields and hasattr(self, key):
