@@ -1,11 +1,11 @@
+import os, sys
 import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.base import StorageKey
-from aiogram.exceptions import TelegramBadRequest
-import os, sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 pytestmark = pytest.mark.asyncio
@@ -72,33 +72,84 @@ def mock_session_manager():
 
 @pytest.fixture
 def mock_api_service():
+    from src.models.domain import Order, AuthResponse, SubmissionResponse
+    
     svc = MagicMock()
-    svc.authenticate_user = AsyncMock(return_value=SimpleNamespace(
-        authenticated=True,
-        order_number="ON123",
-        national_id="001",
-        name="Test",
-        phone_number="0912",
-        city="Tehran",
-        order=MagicMock(model_dump=lambda mode='json': {"national_id": "001"})
-    ))
-    svc.get_order_by_number = AsyncMock(return_value=MagicMock(order_number="456"))
-    svc.get_order_by_serial = AsyncMock(return_value=MagicMock(order_number="789"))
-    svc.submit_repair_request = AsyncMock(return_value=SimpleNamespace(ticket_number="TK123"))
+
+    test_order = Order(
+        number="456",  # Maps to order_number via alias
+        **{
+            '$$_contactId': 'علی محمدی',  # customer_name
+            'contactId_nationalCode': '0012345678',  # national_id
+            'contactId_phone': '09123456789',
+            'contactId_cityId': 'تهران تهران',
+            'steps': 2,  # status_code
+            '$$_steps': 'در حال بررسی',  # status_text
+            'warehouseRecieptId_number': '123456',  # tracking_code
+            'warehouseRecieptId_createdOn': '1404/09/01 12:23',  # registration_date_raw
+            'items': [  # devices
+                {
+                    '$$_deviceId': 'ANFU AF 85',
+                    'serialNumber': '00HEC123456',
+                    '$$_status': 'در انتظار تعمیر',
+                    'status': 1,
+                    'passDescription': 'شکستگی صفحه نمایش'
+                }
+            ],
+            'factorId_number': '123456',  # invoice_number
+            'factorId_paymentLink': 'https://example.com/payment/456',  # payment_link
+            'factorPayment': {  # payment
+                'id': '27561483',
+                'factorId_paymentLink': 'https://example.com/payment/456',
+                'referenceCode': '10000',
+                '$$_invoiceId': '123456'
+            }
+        }
+    )
+
+    svc.get_order_by_number = AsyncMock(return_value=test_order)
+    
+    serial_order = Order(
+        number="789",
+        **{
+            '$$_contactId': 'محمد رضایی',
+            'contactId_nationalCode': '0087654321',
+            'contactId_phone': '09121111111',
+            'contactId_cityId': 'اصفهان کاشان',
+            'steps': 5,
+            '$$_steps': 'تکمیل شده',
+            'warehouseRecieptId_number': '98765',
+            'items': [],
+            'factorId_paymentLink': 'https://example.com/payment/789'
+        }
+    )
+    svc.get_order_by_serial = AsyncMock(return_value=serial_order)
+    
+    auth_response = AuthResponse(order=test_order)
+    svc.authenticate_user = AsyncMock(return_value=auth_response)
+    
+    submission_response = SubmissionResponse(
+        success=True,
+        message="درخواست شما با موفقیت ثبت شد",
+        ticketNumber="15123",
+        recordId="ID3456-789-101112-131415"
+    )
+    svc.submit_repair_request = AsyncMock(return_value=submission_response)
     return svc
 
-
 @pytest.fixture
-async def mock_state():
-    storage = MemoryStorage()
-    key = StorageKey(bot_id=1, chat_id=100, user_id=200)
-    state = FSMContext(storage=storage, key=key)
+def mock_state():
+    """Create a fully mocked FSMContext for testing"""
+    state = MagicMock(spec=FSMContext)
     
-    yield state
+    state.set_state = AsyncMock()
+    state.get_state = AsyncMock(return_value=None)
+    state.set_data = AsyncMock()
+    state.get_data = AsyncMock(return_value={})
+    state.update_data = AsyncMock(return_value={})
+    state.clear = AsyncMock()
     
-    await state.clear()
-    await storage.close()
-
+    return state
 
 # ---------------------------------------------------------------------------
 # COMMON ROUTER
