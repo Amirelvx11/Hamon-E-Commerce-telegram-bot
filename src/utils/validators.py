@@ -70,10 +70,10 @@ class Validators:
     @staticmethod
     def validate_serial(serial: Optional[str]) -> ValidationResult:
         """Validate device serial"""
-        if not serial or not serial.strip():
+        if not isinstance(serial,str) or not serial.strip():
             return ValidationResult(
                 is_valid=False,
-                error_message="❌ سریال دستگاه خالی است!"
+                error_message="❌ سریال دستگاه نامعتبر!"
             )
         
         cleaned = re.sub(r'[\s\-_]', '', serial.strip().upper())
@@ -99,10 +99,10 @@ class Validators:
     @staticmethod
     def validate_phone(phone: str) -> ValidationResult:
         """Validate Iranian mobile"""
-        if not phone:
+        if not isinstance(phone, str) or not phone.strip():
             return ValidationResult(
                 is_valid=False,
-                error_message="❌ شماره همراه خالی است"
+                error_message="❌ شماره همراه نامعتبر است"
             )
         
         cleaned = re.sub(r'[\s\-\(\)]', '', phone.strip())
@@ -132,7 +132,7 @@ class Validators:
                             max_length: Optional[int] = None,
                             context: str = "متن") -> ValidationResult:
         """Validate text length for complaint text's, repair description & ..."""
-        if not text or not text.strip():
+        if not isinstance(text, str) or not text.strip():
             return ValidationResult(
                 is_valid=False,
                 error_message=f"⚠️ لطفاً {context} را وارد کنید"
